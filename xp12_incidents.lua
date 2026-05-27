@@ -35,18 +35,26 @@ dataref("dr_vs",         "sim/flightmodel/position/vh_ind_fpm")
 dataref("dr_gs",         "sim/flightmodel/position/groundspeed")
 
 local current_phase = PHASE_GROUND
+local was_airborne = false   -- war das Flugzeug zuletzt in der Luft?
 
 local function update_phase()
     local gs_kts = dr_gs * 1.94384   -- Umrechnung m/s → Knoten
+
     if dr_on_ground == 1 then
-        if gs_kts > 5 and dr_airspeed < 50 then
-            current_phase = PHASE_TAKEOFF
-        elseif gs_kts > 5 then
-            current_phase = PHASE_LANDING
+        if gs_kts > 5 then
+            -- Rollend am Boden: Herkunft entscheidet
+            if was_airborne then
+                current_phase = PHASE_LANDING   -- kam aus der Luft → Ausrollen
+            else
+                current_phase = PHASE_TAKEOFF   -- war am Boden → Startlauf
+            end
         else
-            current_phase = PHASE_GROUND
+            current_phase = PHASE_GROUND        -- steht oder rollt sehr langsam
+            was_airborne = false                -- Reset: sauber für nächsten Start
         end
     else
+        -- In der Luft
+        was_airborne = true
         if dr_agl < 1000 and dr_vs > 200 then
             current_phase = PHASE_TAKEOFF
         elseif dr_vs > 200 then
@@ -95,12 +103,10 @@ do_on_airport_load("run_resets()")
 
 -- ------------------------------------------------------------
 --  Modul: Pitot verstopft (Insekt / Debris)
--- ------------------------------------------------------------
---  MTBE:           ~11 Stunden (0.3% alle 120 Sek.)
---  Onset:          sofort ODER schleichend (~60 Sek.) - zufaellig
---  Gegenmassnahme: keine (permanent bis Reload/Airport load)
+-- ------------------------------------------------------------   
 --  Hinweis:        stumm
 --  Manuell:        Command "FWL/incidents/pitot_fail"
+--  Gegenmassnahme: toggle
 -- ------------------------------------------------------------
 
 dataref("dr_pitot_fail", "sim/operation/failures/rel_pitot", "writable")
@@ -110,10 +116,11 @@ local pitot = {
     drifting       = false,
     drift_elapsed  = 0,
     last_check     = 0,
-    interval       = 120,
-    probability    = prob_from_mtbe(11, 120),
-    drift_duration = 60,
+    interval       = 120,   -- Prüfintervall in Sekunden
+    mtbe_hours     = 11,    -- mittlere Zeit bis zum Ereignis in Stunden
+    drift_duration = 60,    -- sofort ODER schleichend (~60 Sek.) - zufaellig
 }
+pitot.probability = prob_from_mtbe(pitot.mtbe_hours, pitot.interval)
 
 local function pitot_trigger_immediate()
     dr_pitot_fail   = 6
@@ -130,10 +137,18 @@ local function pitot_reset()
 end
 register_reset(pitot_reset)
 
+local function pitot_toggle()
+    if pitot.triggered or pitot.drifting then
+        pitot_reset()       -- bereits aktiv → zurücksetzen
+    else
+        pitot_trigger_immediate()   -- nicht aktiv → auslösen
+    end
+end
+
 create_command(
     "FWL/incidents/pitot_fail",
-    "Pitot blockiert (manuell)",
-    "pitot_trigger_immediate()",
+    "Pitot blockiert (manuell, Toggle)",
+    "pitot_toggle()",
     "",
     ""
 )
@@ -169,11 +184,148 @@ end
 do_sometimes("pitot_tick()")
 
 
+-- ------------------------------------------------------------
+--  Modul: Static Port verstopft (Insekt / Debris)
+-- ------------------------------------------------------------
+--  Hinweis:        stumm
+--  Manuell:        Command "FWL/incidents/static_fail"
+--  Gegenmassnahme: toggle
+-- ------------------------------------------------------------
+
+dataref("dr_static_fail", "sim/operation/failures/rel_static", "writable")
+
+local static = {
+    triggered      = false,
+    drifting       = false,
+    drift_elapsed  = 0,
+    last_check     = 0,
+    interval       = 120,
+    mtbe_hours     = 11,
+    drift_duration = 60,
+}
+static.probability = prob_from_mtbe(static.mtbe_hours, static.interval)
+
+local function static_trigger_immediate()
+    dr_static_fail   = 6
+    static.triggered = true
+    static.drifting  = false
+end
+
+local function static_reset()
+    if dr_static_fail == 6 then dr_static_fail = 0 end
+    static.triggered     = false
+    static.drifting      = false
+    static.drift_elapsed = 0
+    static.last_check    = os.clock()
+end
+register_reset(static_reset)
+
+local function static_toggle()
+    if static.triggered or static.drifting then
+        static_reset()
+    else
+        static_trigger_immediate()
+    end
+end
+
+create_command(
+    "FWL/incidents/static_fail",
+    "Static Port verstopft (manuell, Toggle)",
+    "static_toggle()",
+    "",
+    ""
+)
+
+local function static_tick()
+    if static.triggered and not static.drifting then return end
+
+    if static.drifting then
+        static.drift_elapsed = static.drift_elapsed + DELTA_TIME
+        if static.drift_elapsed >= static.drift_duration then
+            dr_static_fail   = 6
+            static.drifting  = false
+            static.triggered = true
+        end
+        return
+    end
+
+    local now = os.clock()
+    if (now - static.last_check) < static.interval then return end
+    static.last_check = now
+
+    if math.random() > static.probability then return end
+
+    static.triggered = true
+    if math.random(2) == 1 then
+        static_trigger_immediate()
+    else
+        static.drifting      = true
+        static.drift_elapsed = 0
+    end
+end
+
+do_sometimes("static_tick()")
+
+
 -- ============================================================
 --  [4] KATEGORIE 3 - LATENTE FEHLER
 -- ============================================================
 
 -- [Module folgen]
+
+
+-- ============================================================
+--  [5] STATUS-ANZEIGE (Prüfmodus)
+-- ============================================================
+
+incidents_show_status = false   -- wird per Makro ein/ausgeschaltet
+
+local function incidents_draw_status()
+    if not incidents_show_status then return end
+
+    local x  = 20
+    local sy = (SCREEN_HIGHT or SCREEN_HEIGHT or 1080)
+    local y  = sy - 60
+
+    -- Titel
+    draw_string(x, y,      "[xp12 Incidents]")
+
+    -- Flugphase
+    draw_string(x, y - 20, "Phase:  " .. current_phase)
+
+    -- Pitot
+    local pitot_text
+    if pitot.triggered then
+        pitot_text = "AKTIV"
+    elseif pitot.drifting then
+        local pct = math.floor((pitot.drift_elapsed / pitot.drift_duration) * 100)
+        pitot_text = "schleichend (" .. pct .. "%)"
+    else
+        pitot_text = "OK"
+    end
+    draw_string(x, y - 40, "Pitot:  " .. pitot_text)
+
+    -- Static Port
+    local static_text
+    if static.triggered then
+        static_text = "AKTIV"
+    elseif static.drifting then
+        local pct = math.floor((static.drift_elapsed / static.drift_duration) * 100)
+        static_text = "schleichend (" .. pct .. "%)"
+    else
+        static_text = "OK"
+    end
+    draw_string(x, y - 60, "Static: " .. static_text)
+end
+
+do_every_draw("incidents_draw_status()")
+
+add_macro(
+    "xp12 Incidents: Status anzeigen",
+    "incidents_show_status = true",
+    "incidents_show_status = false",
+    "deactivate"
+)
 
 
 -- ============================================================
