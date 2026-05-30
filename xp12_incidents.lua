@@ -154,6 +154,12 @@ create_command(
 )
 
 function pitot_tick()
+    if dr_pitot_fail == 6 and not pitot.triggered and not pitot.drifting then
+        pitot.triggered = true
+    elseif dr_pitot_fail ~= 6 and pitot.triggered then
+        pitot.triggered = false
+    end
+
     if pitot.triggered and not pitot.drifting then return end
 
     if pitot.drifting then
@@ -236,6 +242,12 @@ create_command(
 )
 
 function static_tick()
+    if dr_static_fail == 6 and not static.triggered and not static.drifting then
+        static.triggered = true
+    elseif dr_static_fail ~= 6 and static.triggered then
+        static.triggered = false
+    end
+
     if static.triggered and not static.drifting then return end
 
     if static.drifting then
