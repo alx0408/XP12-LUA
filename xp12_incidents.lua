@@ -105,7 +105,7 @@ run_resets()
 --  Modul: Pitot verstopft (Insekt / Debris)
 -- ------------------------------------------------------------   
 --  Hinweis:        stumm
---  Manuell:        Command "FWL/incidents/pitot_fail"
+--  Manuell:        Command "FlyWithLua/Incidents/pitot_fail"
 --  Gegenmassnahme: toggle
 -- ------------------------------------------------------------
 
@@ -146,7 +146,7 @@ local function pitot_toggle()
 end
 
 create_command(
-    "FWL/incidents/pitot_fail",
+    "FlyWithLua/Incidents/pitot_fail",
     "Pitot blockiert (manuell, Toggle)",
     "pitot_toggle()",
     "",
@@ -187,7 +187,7 @@ do_sometimes("pitot_tick()")
 --  Modul: Static Port verstopft (Insekt / Debris)
 -- ------------------------------------------------------------
 --  Hinweis:        stumm
---  Manuell:        Command "FWL/incidents/static_fail"
+--  Manuell:        Command "FlyWithLua/Incidents/static_fail"
 --  Gegenmassnahme: toggle
 -- ------------------------------------------------------------
 
@@ -228,7 +228,7 @@ local function static_toggle()
 end
 
 create_command(
-    "FWL/incidents/static_fail",
+    "FlyWithLua/Incidents/static_fail",
     "Static Port verstopft (manuell, Toggle)",
     "static_toggle()",
     "",
