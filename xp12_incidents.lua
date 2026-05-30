@@ -37,7 +37,7 @@ dataref("dr_gs",         "sim/flightmodel/position/groundspeed")
 local current_phase = PHASE_GROUND
 local was_airborne = false   -- war das Flugzeug zuletzt in der Luft?
 
-local function update_phase()
+function update_phase()
     local gs_kts = dr_gs * 1.94384   -- Umrechnung m/s → Knoten
 
     if dr_on_ground == 1 then
@@ -137,7 +137,7 @@ local function pitot_reset()
 end
 register_reset(pitot_reset)
 
-local function pitot_toggle()
+function pitot_toggle()
     if pitot.triggered or pitot.drifting then
         pitot_reset()       -- bereits aktiv → zurücksetzen
     else
@@ -153,7 +153,7 @@ create_command(
     ""
 )
 
-local function pitot_tick()
+function pitot_tick()
     if pitot.triggered and not pitot.drifting then return end
 
     if pitot.drifting then
@@ -219,7 +219,7 @@ local function static_reset()
 end
 register_reset(static_reset)
 
-local function static_toggle()
+function static_toggle()
     if static.triggered or static.drifting then
         static_reset()
     else
@@ -235,7 +235,7 @@ create_command(
     ""
 )
 
-local function static_tick()
+function static_tick()
     if static.triggered and not static.drifting then return end
 
     if static.drifting then
@@ -278,7 +278,7 @@ do_sometimes("static_tick()")
 
 incidents_show_status = false   -- wird per Makro ein/ausgeschaltet
 
-local function incidents_draw_status()
+function incidents_draw_status()
     if not incidents_show_status then return end
 
     local x  = 20
