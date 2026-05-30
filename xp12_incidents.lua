@@ -86,7 +86,7 @@ local function run_resets()
     for _, fn in ipairs(reset_callbacks) do fn() end
 end
 
-do_on_airport_load("run_resets()")
+run_resets()
 
 
 -- ============================================================
