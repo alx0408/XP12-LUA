@@ -172,7 +172,6 @@ local function pitot_tick()
 
     if math.random() > pitot.probability then return end
 
-    pitot.triggered = true
     if math.random(2) == 1 then
         pitot_trigger_immediate()
     else
@@ -255,7 +254,6 @@ local function static_tick()
 
     if math.random() > static.probability then return end
 
-    static.triggered = true
     if math.random(2) == 1 then
         static_trigger_immediate()
     else
