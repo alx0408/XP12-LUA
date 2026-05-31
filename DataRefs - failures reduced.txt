@@ -97,9 +97,9 @@ sim/operation/failures/rel_ice_window_heat	int	y	failure_enum	Window Heat
 sim/operation/failures/rel_ice_prop_heat	int	y	failure_enum	Prop Heat, engine 1	
 sim/operation/failures/rel_ice_prop_heat2	int	y	failure_enum	Prop Heat, engine 2		
 sim/operation/failures/rel_dice_tks_pump_0	int	y	failure_enum	TKS fluid pump 1	
-sim/operation/failures/rel_HVAC			int	y	failure_enum	air conditioning failed	
 sim/operation/failures/rel_vacuum		int	y	failure_enum	Vacuum System 1 - Pump Failure	
 sim/operation/failures/rel_vacuum2		int	y	failure_enum	Vacuum System 2 - Pump Failure	
+sim/operation/failures/rel_HVAC			int	y	failure_enum	air conditioning failed	
 
 
 INSTRUMENTS
@@ -197,8 +197,9 @@ sim/operation/failures/rel_fc_R_flp	int	y	failure_enum	Right flap actuator
 sim/operation/failures/rel_rud_trim_run	int	y	failure_enum	Yaw Trim Runaway	
 sim/operation/failures/rel_ail_trim_run	int	y	failure_enum	Pitch Trim Runaway	
 sim/operation/failures/rel_elv_trim_run	int	y	failure_enum	Elevator Trim Runaway
-sim/operation/failures/rel_otto		int	y	failure_enum	AutoPilot (Computer)
-sim/operation/failures/rel_auto_runaway	int	y	failure_enum	AutoPilot (Runaway!!!)
+
+
+
 
 
 2. NOPE, erstmal nicht

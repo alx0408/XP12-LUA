@@ -261,4 +261,4 @@ PROP_COARSE_2     = OFF
 PROP_SYNC         = OFF
 
 # ---- ENVIRONMENT -------------------------------------------
-BIRD_ENG1         = OFF
+
