@@ -53,7 +53,9 @@ local function parse_failure_entry(val_str)
     if     main == "OFF"     then mtbf = "OFF"
     elseif main == "ON"      then mtbf = "ON"
     elseif main == "DEFAULT" then mtbf = "DEFAULT"
-    else                          mtbf = tonumber(main) or "DEFAULT"
+    else
+        local n = tonumber(main)
+        mtbf = (n and n > 0) and n or "DEFAULT"  -- 0 und negativ → DEFAULT
     end
     return mtbf, fval
 end
@@ -62,8 +64,11 @@ local function load_config()
     local file = io.open(CONFIG_PATH, "r")
     if not file then return end
 
-    cfg.profiles = {}
-    local section = nil   -- aktiver Abschnittsname
+    -- Fix 5: Werte vor jedem Reload auf Defaults zurücksetzen
+    cfg.mode         = "ON"
+    cfg.default_mtbf = 10000
+    cfg.profiles     = {}
+    local section    = nil   -- aktiver Abschnittsname
 
     for line in file:lines() do
         line = line:match("^%s*(.-)%s*$")
@@ -89,15 +94,12 @@ local function load_config()
                             local n = tonumber(val)
                             cfg.mode = n and n or val:upper()
                         elseif key == "DEFAULT_MTBF" then
-                            cfg.default_mtbf = tonumber(val) or 10000
+                            local n = tonumber(val)
+                            cfg.default_mtbf = (n and n > 0) and n or 10000
                         end
                     else
-                        if key == "MODE" then
-                            local n = tonumber(val)
-                            cfg.mode = n and n or val:upper()
-                        elseif key == "DEFAULT_MTBF" then
-                            cfg.default_mtbf = tonumber(val) or 10000
-                        elseif key == "ICAO" then
+                        -- Fix 2: MODE/DEFAULT_MTBF nur im globalen Abschnitt gültig
+                        if key == "ICAO" then
                             -- kommagetrennte ICAO-Liste
                             for icao in val:gmatch("[^,%s]+") do
                                 table.insert(cfg.profiles[section].icao, icao:upper())
@@ -119,7 +121,8 @@ end
 --  merged DEFAULT + Profil-Overrides in cfg.active_failures.
 
 local function build_active_profile()
-    local icao = (dr_acf_icao or ""):upper():match("^%s*(.-)%s*$")
+    -- Null-Bytes aus Byte-Array-DataRef abschneiden, dann trimmen
+    local icao = ((dr_acf_icao or ""):match("^([^%z]*)") or ""):upper():match("^%s*(.-)%s*$")
 
     -- mit DEFAULT beginnen
     cfg.active_failures = {}
@@ -132,15 +135,17 @@ local function build_active_profile()
         end
     end
 
-    -- passendes Profil suchen
+    -- passendes Profil suchen (Fix 4: outer loop abbrechenn nach erstem Match)
+    local matched = false
     for name, prof in pairs(cfg.profiles) do
-        if name ~= "DEFAULT" then
+        if name ~= "DEFAULT" and not matched then
             for _, pid in ipairs(prof.icao) do
                 if pid == icao then
                     for k, v in pairs(prof.failures) do
                         cfg.active_failures[k] = v
                     end
                     cfg.active_name = name
+                    matched = true
                     break
                 end
             end
@@ -154,6 +159,10 @@ local function prob_from_mtbf(mtbf_hours, interval_sec)
 end
 
 -- ---- Fehlerspeicher ----------------------------------------
+-- forward declarations: failures und Helfer werden in [2] definiert
+local failures
+local get_dr, set_dr, get_mtbf
+
 local MEMORY_PATH    = SCRIPT_DIRECTORY .. "xp12_incidents_memory.txt"
 local memory_enabled = false   -- wird nach Bootstrap aktiviert
 
@@ -227,7 +236,7 @@ local function load_memory()
                     key = key:upper()
                     local value = tonumber(val)
                     for _, f in ipairs(failures) do
-                        if f.key == key and value and value > 0 then
+                        if f.key == key and (value == 1 or value == 6) then
                             local _, flag = get_mtbf(f)
                             if flag ~= "OFF" then set_dr(f, value) end
                             break
@@ -256,7 +265,7 @@ end
 
 local TICK_INTERVAL = 10   -- do_rarely: ~10 Sekunden
 
-local failures = {}
+failures = {}
 
 local function def(key, dr_path, label, condition)
     table.insert(failures, {
@@ -467,12 +476,12 @@ local function init_refs()
     end
 end
 
-local function get_dr(f)
+get_dr = function(f)
     if not f._ref then return 0 end
     return XPLMGetDatai(f._ref)
 end
 
-local function set_dr(f, value)
+set_dr = function(f, value)
     if not f._ref then return end
     XPLMSetDatai(f._ref, value)
 end
@@ -487,7 +496,7 @@ local function condition_ok(f)
 end
 
 -- ---- Config-Zugriff für Failure ----------------------------
-local function get_mtbf(f)
+get_mtbf = function(f)
     local fc = cfg.active_failures[f.key]
     if not fc then return cfg.default_mtbf, nil end
     if fc.mtbf == "OFF"     then return nil, "OFF" end
@@ -527,17 +536,20 @@ local rnd_scheduled = false
 local rnd_fired     = false
 local rnd_target    = nil
 local rnd_fire_at   = 0
+local rnd_pause_at  = nil   -- os.clock() beim Toggle-OFF, für Zeitkorrektur
 
 local function schedule_random()
     if type(cfg.mode) ~= "number" then return end
     local eligible = {}
     for _, f in ipairs(failures) do
         local _, flag = get_mtbf(f)
-        if flag ~= "OFF" then table.insert(eligible, f) end
+        if flag ~= "OFF" and get_dr(f) == 0 then table.insert(eligible, f) end
     end
     if #eligible == 0 then return end
     rnd_target    = eligible[math.random(#eligible)]
-    rnd_fire_at   = os.clock() + math.random(0, math.floor(cfg.mode * 60))
+    -- Fix 1: negative oder 0-Werte für MODE absichern
+    local window  = math.max(0, math.floor(cfg.mode * 60))
+    rnd_fire_at   = os.clock() + (window > 0 and math.random(0, window) or 0)
     rnd_fired     = false
     rnd_scheduled = true
 end
@@ -549,11 +561,16 @@ end
 
 function incidents_toggle()
     if system_paused then
-        -- Resume: Memory wiederherstellen, keine DataRef-Änderungen nötig
+        -- Resume: RANDOM-Fenster um Pausendauer verschieben, dann Memory laden
+        if rnd_pause_at and rnd_scheduled and not rnd_fired then
+            rnd_fire_at = rnd_fire_at + (os.clock() - rnd_pause_at)
+        end
+        rnd_pause_at  = nil
         system_paused = false
         load_memory()
     else
-        -- Pause: DataRefs zurücksetzen, Memory NICHT anfassen
+        -- Pause: Zeitstempel merken, DataRefs zurücksetzen, Memory NICHT anfassen
+        rnd_pause_at = os.clock()
         local was = memory_enabled
         memory_enabled = false
         for _, f in ipairs(failures) do reset_failure(f) end
@@ -594,7 +611,15 @@ create_command(
 function incidents_reload_config()
     load_config()
     build_active_profile()
-    -- keine DataRef-Änderungen: aktive Failures bleiben erhalten
+    -- Failures die jetzt OFF sind und noch aktiv sind, zurücksetzen
+    local was_enabled = memory_enabled
+    memory_enabled = false
+    for _, f in ipairs(failures) do
+        local _, flag = get_mtbf(f)
+        if flag == "OFF" then reset_failure(f) end
+    end
+    memory_enabled = was_enabled
+    save_memory()
     rnd_scheduled = false
     rnd_fired     = false
     rnd_target    = nil
@@ -691,6 +716,9 @@ function incidents_tick()
             if f and condition_ok(f) then
                 trigger_failure(f)
                 rnd_fired = true
+            elseif f then
+                -- Fix 3: Bedingung nicht erfüllt → in einem Tick erneut versuchen
+                rnd_fire_at = os.clock() + TICK_INTERVAL
             end
         end
         return
@@ -711,6 +739,20 @@ function incidents_tick()
 end
 
 do_rarely("incidents_tick()")
+
+-- ---- Flugzeugwechsel erkennen ------------------------------
+local last_icao = ""
+
+function incidents_aircraft_check()
+    local current = ((dr_acf_icao or ""):match("^([^%z]*)") or ""):upper():match("^%s*(.-)%s*$")
+    if current ~= "" and current ~= last_icao then
+        last_icao = current
+        build_active_profile()
+        load_memory()
+    end
+end
+
+do_sometimes("incidents_aircraft_check()")
 
 -- ---- Bootstrap ---------------------------------------------
 load_config()
@@ -737,3 +779,6 @@ memory_enabled = true
 if type(cfg.mode) == "number" then
     schedule_random()
 end
+
+-- ICAO merken damit incidents_aircraft_check() nicht sofort neu aufbaut
+last_icao = ((dr_acf_icao or ""):match("^([^%z]*)") or ""):upper():match("^%s*(.-)%s*$")
