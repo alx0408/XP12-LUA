@@ -186,6 +186,11 @@ local memory_enabled = false   -- wird nach Bootstrap aktiviert
 local inc_popup_from  = nil   -- os.clock() + 5 nach Bootstrap
 local inc_popup_until = nil   -- os.clock() + 13 nach Bootstrap
 
+local function inc_trigger_popup()
+    inc_popup_from  = os.clock()
+    inc_popup_until = os.clock() + 5
+end
+
 local function save_memory()
     if not memory_enabled then return end
     if cfg.active_name == "DEFAULT" then return end
@@ -598,6 +603,7 @@ function incidents_toggle()
         memory_enabled = was
         system_paused = true
     end
+    inc_trigger_popup()
 end
 
 create_command(
@@ -620,6 +626,7 @@ function incidents_reset_profile()
     rnd_fired     = false
     rnd_target    = nil
     if type(cfg.mode) == "number" then schedule_random() end
+    inc_trigger_popup()
 end
 
 create_command(
@@ -645,6 +652,7 @@ function incidents_reload_config()
     rnd_fired     = false
     rnd_target    = nil
     if type(cfg.mode) == "number" then schedule_random() end
+    inc_trigger_popup()
 end
 
 create_command(
