@@ -260,17 +260,156 @@ PROP_COARSE_1     = OFF
 PROP_COARSE_2     = OFF
 PROP_SYNC         = OFF
 
-# ---- ENVIRONMENT -------------------------------------------
+# ---- ELECTRICAL --------------------------------------------
+ELEC_BUS1         = DEFAULT;6
+ELEC_BUS2         = DEFAULT;6
+INVERTER_1        = DEFAULT;6
+INVERTER_2        = DEFAULT;6
+GENERATOR_1       = DEFAULT;6
+GENERATOR_2       = DEFAULT;6
+BATTERY_1         = DEFAULT;6
+BATTERY_2         = DEFAULT;6
+GEN0_LO           = DEFAULT;1
+GEN0_HI           = DEFAULT;6
+GEN1_LO           = DEFAULT;1
+GEN1_HI           = DEFAULT;6
+BAT0_LO           = DEFAULT;1
+BAT0_HI           = DEFAULT;6
+BAT1_LO           = DEFAULT;1
+BAT1_HI           = DEFAULT;6
+AVIONICS_FAN      = DEFAULT;6
+MAGNETOMETER      = DEFAULT;1
+
+# ---- LIGHTS ------------------------------------------------
+LITES_NAV         = DEFAULT;6
+LITES_STROBE      = DEFAULT;6
+LITES_BEACON      = DEFAULT;6
+LITES_TAXI        = DEFAULT;6
+LITES_LANDING     = DEFAULT;6
+LITES_INST        = DEFAULT;6
+LITES_COCKPIT     = DEFAULT;6
+
+# ---- AUTOPILOT ---------------------------------------------
+AP_COMPUTER       = DEFAULT;6
+AP_RUNAWAY        = OFF
+AP_SERVOS         = DEFAULT;6
+AP_SERVO_RUDD     = DEFAULT;6
+AP_SERVO_AILN     = DEFAULT;6
+AP_SERVO_ELEV     = DEFAULT;6
+
+# ---- SYSTEMS -----------------------------------------------
+PITOT_HEAT_1      = DEFAULT;6
+PITOT_HEAT_2      = DEFAULT;6
+AOA_HEAT          = DEFAULT;6
+WINDOW_HEAT       = DEFAULT;6
+PROP_HEAT_1       = DEFAULT;6
+PROP_HEAT_2       = DEFAULT;6
+TKS_PUMP          = DEFAULT;6
+HVAC              = DEFAULT;6
+VACUUM_1          = DEFAULT;6
+VACUUM_2          = DEFAULT;6
+
+# ---- INSTRUMENTS -------------------------------------------
+ASI_PILOT         = DEFAULT;6
+AHZ_PILOT         = DEFAULT;6
+ALT_PILOT         = DEFAULT;6
+TSI_PILOT         = DEFAULT;6
+DGY_PILOT         = DEFAULT;6
+VVI_PILOT         = DEFAULT;6
+AHZ_COPILOT       = DEFAULT;6
+ALT_COPILOT       = DEFAULT;6
+G_ASI             = DEFAULT;6
+G_ALT             = DEFAULT;6
+G_VVI             = DEFAULT;6
+G430_GPS1         = DEFAULT;6
+G430_GPS2         = DEFAULT;6
+G430_NAV1         = DEFAULT;6
+G430_NAV2         = DEFAULT;6
+G_PFD             = DEFAULT;6
+G_MFD             = DEFAULT;6
+WXR_RADAR         = DEFAULT;6
+G_GIA1            = DEFAULT;6
+G_GIA2            = DEFAULT;6
+G_GEA             = DEFAULT;6
+NAVCOM1           = DEFAULT;6
+NAVCOM2           = DEFAULT;6
+NAV1              = DEFAULT;6
+NAV2              = DEFAULT;6
+COM1              = DEFAULT;6
+COM2              = DEFAULT;6
+ADF1              = DEFAULT;6
+GPS               = DEFAULT;6
+DME               = DEFAULT;6
+LOC               = DEFAULT;6
+GLS               = DEFAULT;6
+XPNDR             = DEFAULT;6
+MARKER            = DEFAULT;6
+RPM_IND_1         = DEFAULT;6
+RPM_IND_2         = DEFAULT;6
+MP_IND_1          = DEFAULT;6
+MP_IND_2          = DEFAULT;6
+CHT_IND_1         = DEFAULT;1
+CHT_IND_2         = DEFAULT;1
+EGT_IND_1         = DEFAULT;1
+EGT_IND_2         = DEFAULT;1
+FF_IND_1          = DEFAULT;1
+FF_IND_2          = DEFAULT;1
+FUEL_P_IND_1      = DEFAULT;1
+FUEL_P_IND_2      = DEFAULT;1
+OIL_P_IND_1       = DEFAULT;1
+OIL_P_IND_2       = DEFAULT;1
+OIL_T_IND_1       = DEFAULT;1
+OIL_T_IND_2       = DEFAULT;1
+STALL_WARN        = DEFAULT;6
+GEAR_WARN         = DEFAULT;6
+
+# ---- SENSORS -----------------------------------------------
+PITOT             = DEFAULT;1
+PITOT_2           = DEFAULT;1
+PITOT_STBY        = DEFAULT;1
+STATIC            = DEFAULT;1
+STATIC_2          = DEFAULT;1
+STATIC_ERR_1      = DEFAULT;1
+STATIC_ERR_2      = DEFAULT;1
+STATIC_STBY       = DEFAULT;1
+OAT               = DEFAULT;1
+ICE_DETECT        = DEFAULT;6
+FUEL_QTY          = DEFAULT;1
+
+# ---- GEAR --------------------------------------------------
+GEAR_ACT          = DEFAULT;6
+GEAR_IND          = DEFAULT;6
+GEAR_RET_1        = DEFAULT;6
+GEAR_RET_2        = DEFAULT;6
+GEAR_RET_3        = DEFAULT;6
+GEAR_COL_1        = OFF
+GEAR_COL_2        = OFF
+GEAR_COL_3        = OFF
+TIRE_1            = DEFAULT;6
+TIRE_2            = DEFAULT;6
+TIRE_3            = DEFAULT;6
+TIRE_4            = DEFAULT;6
+TIRE_5            = DEFAULT;6
+BRAKES_L          = DEFAULT;6
+BRAKES_R          = DEFAULT;6
+
+# ---- CONTROLS ----------------------------------------------
+FLAP_ACT          = DEFAULT;6
+FLAP_ACT_L        = DEFAULT;6
+FLAP_ACT_R        = DEFAULT;6
+RUD_TRIM_RUN      = DEFAULT;6
+AIL_TRIM_RUN      = DEFAULT;6
+ELV_TRIM_RUN      = DEFAULT;6
 
 
 # ============================================================
-#  C172 — Cessna 172 (Dampfmesser, Einmot, Festfahrwerk)
+#  C172 — Cessna 172 (steam gauges, SEP, fixed gear)
 # ============================================================
 
 [C172]
 ICAO = C172
 
-# ---- ENGINES (Einmot) --------------------------------------
+# ---- ENGINES (SEP) --------------------------------------
 ENG_FAIL_2        = OFF
 ENG_FIRE_2        = OFF
 STARTER_2         = OFF
@@ -283,59 +422,75 @@ ELE_FUEL_PMP_2    = OFF
 FUEL_FLOW_2       = OFF
 OIL_PUMP_2        = OFF
 
-# ---- PROPELLERS (kein zweiter Motor) -----------------------
+# ---- PROPELLERS  -----------------------
+PROP_FINE_1       = OFF
 PROP_FINE_2       = OFF
+PROP_COARSE_1     = OFF
 PROP_COARSE_2     = OFF
 PROP_SYNC         = OFF
 
-# ---- ELECTRICAL (kein zweiter Generator/Batterie) ----------
+# ---- ELECTRICAL  ----------
 GEN1_LO           = OFF
 GEN1_HI           = OFF
 BAT1_LO           = OFF
 BAT1_HI           = OFF
 INVERTER_2        = OFF
 
-# ---- INSTRUMENTS (keine Copilot-Instrumente, kein G1000) ---
-AHZ_COPILOT       = OFF
-ALT_COPILOT       = OFF
-G_ASI             = OFF
-G_ALT             = OFF
-G_VVI             = OFF
-G430_GPS1         = OFF
-G430_GPS2         = OFF
-G430_NAV1         = OFF
-G430_NAV2         = OFF
-G_PFD             = OFF
-G_MFD             = OFF
-WXR_RADAR         = OFF
-G_GIA1            = OFF
-G_GIA2            = OFF
-G_GEA             = OFF
+# ---- INSTRUMENTS ---
 
-# ---- SYSTEMS (kein TKS, keine Prop-Enteiser) ---------------
+GLS               = OFF
+RPM_IND_2         = OFF
+MP_IND_1          = OFF
+MP_IND_2          = OFF
+CHT_IND_1         = OFF
+CHT_IND_2         = OFF
+EGT_IND_2         = OFF
+FF_IND_2          = OFF
+FUEL_P_IND_2      = OFF
+OIL_P_IND_2       = OFF
+OIL_T_IND_2       = OFF
+GEAR_WARN         = OFF
+
+# ---- SYSTEMS  ---------------
 PROP_HEAT_1       = OFF
 PROP_HEAT_2       = OFF
 TKS_PUMP          = OFF
+PITOT_HEAT_2      = OFF
+VACUUM_2          = OFF
 
-# ---- GEAR (Festfahrwerk) -----------------------------------
+# ---- SENSORS -----------------------------------------------
+PITOT_2           = OFF
+PITOT_STBY        = OFF
+STATIC_2          = OFF
+STATIC_ERR_2      = OFF
+STATIC_STBY       = OFF
+ICE_DETECT        = OFF
+
+# ---- GEAR  -----------------------------------
 GEAR_ACT          = OFF
 GEAR_IND          = OFF
 GEAR_RET_1        = OFF
 GEAR_RET_2        = OFF
 GEAR_RET_3        = OFF
 
-# ---- ENVIRONMENT (Einmot) ----------------------------------
+# ---- CONTROLS  -------------
+RUD_TRIM_RUN      = OFF
+AIL_TRIM_RUN      = OFF
+ELV_TRIM_RUN      = OFF
+
+# ---- ENVIRONMENT  ----------------------------------
 BIRD_ENG2         = OFF
 
 
 # ============================================================
-#  SR22 — Cirrus SR22 G1000 (Einmot, Festfahrwerk, G1000)
+#  SR22 — Cirrus SR22 G1000
 # ============================================================
 
 [SR22]
 ICAO = SR22
 
-# ---- ENGINES (Einmot) --------------------------------------
+
+# ---- ENGINES -----------------------------------------------
 ENG_FAIL_2        = OFF
 ENG_FIRE_2        = OFF
 STARTER_2         = OFF
@@ -347,37 +502,72 @@ OIL_PRESS_LO_2    = OFF
 ELE_FUEL_PMP_2    = OFF
 FUEL_FLOW_2       = OFF
 OIL_PUMP_2        = OFF
+AIRFLOW_ENG1      = OFF
 
-# ---- PROPELLERS (kein zweiter Motor, kein Sync) ------------
-PROP_FINE_2       = OFF
-PROP_COARSE_2     = OFF
+# ---- PROPELLERS --------------------------------------------
 PROP_SYNC         = OFF
 
-# ---- ELECTRICAL (kein zweiter Generator/Batterie) ----------
-GEN1_LO           = OFF
-GEN1_HI           = OFF
-BAT1_LO           = OFF
-BAT1_HI           = OFF
-INVERTER_2        = OFF
+# ---- FUEL --------------------------------------------------
 
-# ---- INSTRUMENTS (G1000, keine Copilot-Instrumente) --------
+# ---- ELECTRICAL --------------------------------------------
+ELEC_BUS2         = OFF
+INVERTER_2        = OFF
+GENERATOR_2       = OFF
+
+
+# ---- LIGHTS ------------------------------------------------
+LITES_BEACON      = OFF
+
+# ---- AUTOPILOT ---------------------------------------------
+
+# ---- SYSTEMS -----------------------------------------------
+PITOT_HEAT_2      = OFF
+AOA_HEAT          = OFF
+PROP_HEAT_1       = OFF
+PROP_HEAT_2       = OFF
+VACUUM_2          = OFF
+
+# ---- INSTRUMENTS -------------------------------------------
+ASI_PILOT         = OFF
+AHZ_PILOT         = OFF
+ALT_PILOT         = OFF
+TSI_PILOT         = OFF
+DGY_PILOT         = OFF
+VVI_PILOT         = OFF
 AHZ_COPILOT       = OFF
 ALT_COPILOT       = OFF
 G430_GPS1         = OFF
 G430_GPS2         = OFF
 G430_NAV1         = OFF
 G430_NAV2         = OFF
+RPM_IND_2         = OFF
+MP_IND_2          = OFF
+CHT_IND_2         = OFF
+EGT_IND_2         = OFF
+FF_IND_2          = OFF
+FUEL_P_IND_2      = OFF
+OIL_P_IND_2       = OFF
+OIL_T_IND_2       = OFF
+GEAR_WARN         = OFF
 
-# ---- SYSTEMS (TKS aktiv, keine Prop-Enteiser) --------------
-PROP_HEAT_1       = OFF
-PROP_HEAT_2       = OFF
+# ---- SENSORS -----------------------------------------------
+PITOT_2           = OFF
+PITOT_STBY        = OFF
+STATIC_2          = OFF
+STATIC_ERR_2      = OFF
 
-# ---- GEAR (Festfahrwerk) -----------------------------------
+
+# ---- GEAR --------------------------------------------------
 GEAR_ACT          = OFF
 GEAR_IND          = OFF
 GEAR_RET_1        = OFF
 GEAR_RET_2        = OFF
 GEAR_RET_3        = OFF
+GEAR_COL_1        = OFF
+GEAR_COL_2        = OFF
+GEAR_COL_3        = OFF
 
-# ---- ENVIRONMENT (Einmot) ----------------------------------
-BIRD_ENG2         = OFF
+
+# ---- CONTROLS ----------------------------------------------
+
+
