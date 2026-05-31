@@ -166,6 +166,10 @@ local get_dr, set_dr, get_mtbf
 local MEMORY_PATH    = SCRIPT_DIRECTORY .. "xp12_incidents_memory.txt"
 local memory_enabled = false   -- wird nach Bootstrap aktiviert
 
+-- ---- Startup-Popup -----------------------------------------
+local inc_popup_from  = nil   -- os.clock() + 5 nach Bootstrap
+local inc_popup_until = nil   -- os.clock() + 13 nach Bootstrap
+
 local function save_memory()
     if not memory_enabled then return end
     if cfg.active_name == "DEFAULT" then return end
@@ -659,6 +663,35 @@ end
 incidents_show_status = false
 
 function incidents_draw_status()
+    -- Startup-Popup (unabhängig vom Macro-Status)
+    local now = os.clock()
+    if inc_popup_from and inc_popup_until and now >= inc_popup_from and now < inc_popup_until then
+        local font = 18
+        local bw   = font * 21
+        local bh   = font * 3.5
+        local sw   = SCREEN_WIDTH  or 1920
+        local sy   = SCREEN_HIGHT  or SCREEN_HEIGHT or 1080
+        local xpos = sw - bw - 40
+        local ypos = sy - (font * 6.3) - 400 - 10 - bh   -- 10px unter LandingRate-Box
+
+        local mode_str
+        if system_paused then
+            mode_str = "OFF"
+        elseif type(cfg.mode) == "number" then
+            mode_str = "RANDOM (" .. cfg.mode .. " min)"
+        else
+            mode_str = tostring(cfg.mode)
+        end
+
+        XPLMSetGraphicsState(0, 0, 0, 1, 1, 0, 0)
+        graphics.set_color(0, 0, 0, 0.3)
+        graphics.draw_rectangle(xpos, ypos, xpos + bw, ypos + bh)
+        graphics.set_color(0.4, 0.8, 1, 1)
+        draw_string_Helvetica_18(xpos + 8, ypos + bh - 20, "xp12 Incidents")
+        graphics.set_color(1, 1, 1, 1)
+        draw_string_Helvetica_18(xpos + 8, ypos + bh - 42, "MODE: " .. mode_str .. "  |  " .. cfg.active_name)
+    end
+
     if not incidents_show_status then return end
 
     local x  = 100
@@ -779,6 +812,10 @@ memory_enabled = true
 if type(cfg.mode) == "number" then
     schedule_random()
 end
+
+-- Startup-Popup: 5s verzögert anzeigen, 8s lang
+inc_popup_from  = os.clock() + 5
+inc_popup_until = os.clock() + 13
 
 -- ICAO merken damit incidents_aircraft_check() nicht sofort neu aufbaut
 last_icao = ((dr_acf_icao or ""):match("^([^%z]*)") or ""):upper():match("^%s*(.-)%s*$")
