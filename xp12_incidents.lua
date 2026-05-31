@@ -669,6 +669,32 @@ create_command(
     "", ""
 )
 
+-- ---- Alle Failures triggern / zurücksetzen -----------------
+function incidents_trigger_all()
+    local any_active = false
+    for _, f in ipairs(failures) do
+        if get_dr(f) > 0 then any_active = true; break end
+    end
+    local was_enabled = memory_enabled
+    memory_enabled = false
+    for _, f in ipairs(failures) do
+        local _, flag = get_mtbf(f)
+        if flag ~= "OFF" then
+            if any_active then reset_failure(f) else trigger_failure(f) end
+        end
+    end
+    memory_enabled = was_enabled
+    save_memory()
+    inc_trigger_popup(any_active and "-- ALL RESET --" or "-- ALL TRIGGERED --")
+end
+
+create_command(
+    "FlyWithLua/Incidents/trigger_all",
+    "Incidents: Alle Failures ein/aus",
+    "incidents_trigger_all()",
+    "", ""
+)
+
 -- ---- Per-Failure Toggle ------------------------------------
 local function make_toggle(f)
     local fn = "incidents_toggle_" .. f.key:lower()
