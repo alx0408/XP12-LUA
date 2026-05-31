@@ -267,7 +267,8 @@ end
 --    _last     = letzter Prüfzeitpunkt (os.clock)
 --    _ref      = XPLMDataRef-Handle (gesetzt bei Init)
 
-local TICK_INTERVAL = 10   -- do_rarely: ~10 Sekunden
+local TICK_INTERVAL = 10   -- Sekunden zwischen Failure-Checks
+local tick_last     = 0
 
 failures = {}
 
@@ -740,6 +741,9 @@ add_macro(
 -- ============================================================
 
 function incidents_tick()
+    local now = os.clock()
+    if now - tick_last < TICK_INTERVAL then return end
+    tick_last = now
     if system_paused then return end
     if cfg.mode == "OFF" then return end
 
@@ -771,7 +775,7 @@ function incidents_tick()
     end
 end
 
-do_rarely("incidents_tick()")
+do_sometimes("incidents_tick()")
 
 -- ---- Flugzeugwechsel erkennen ------------------------------
 local last_icao = ""

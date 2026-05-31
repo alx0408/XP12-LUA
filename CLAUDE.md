@@ -41,7 +41,7 @@ Nur diese Registrierungsfunktionen existieren in FlyWithLua NG+:
 | `do_every_draw(s)` | Jeden Frame |
 | `do_often(s)` | ~10× pro Sekunde |
 | `do_sometimes(s)` | ~1× pro Sekunde |
-| `do_rarely(s)` | ~1× alle 10 Sekunden |
+| ~~`do_rarely(s)`~~ | existiert nicht — stattdessen `do_sometimes` mit manuellem Throttle |
 | `do_on_keystroke(s)` | Bei Tastendruck |
 | `do_on_mouse_click(s)` | Bei Mausklick |
 | `create_command(name, desc, begin, cont, end)` | Command-Handler |
