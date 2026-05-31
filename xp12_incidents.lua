@@ -20,15 +20,31 @@ math.randomseed(os.time())
 -- ============================================================
 
 -- ---- Condition DataRefs ------------------------------------
-dataref("dr_on_ground",  "sim/flightmodel/failures/onground_any")
-dataref("dr_engn_run0",  "sim/flightmodel/engine/ENGN_running[0]")
-dataref("dr_engn_run1",  "sim/flightmodel/engine/ENGN_running[1]")
-dataref("dr_bus_volts",  "sim/cockpit2/electrical/bus_volts[0]")
-dataref("dr_acf_icao",   "sim/aircraft/view/acf_ICAO")
+-- dataref() unterstützt keine [n]-Array-Syntax in FlyWithLua 2.8.x
+-- → Arrays direkt über XPLMFindDataRef + XPLMGetDatavi/vf lesen
+dataref("dr_on_ground", "sim/flightmodel/failures/onground_any")
+dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO")
 
-local function airborne()       return dr_on_ground == 0 end
-local function engine_on()      return dr_engn_run0 == 1 or dr_engn_run1 == 1 end
-local function electrical_on()  return dr_bus_volts > 1 end
+local _ref_engn  = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
+local _ref_volts = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
+
+local function airborne()
+    return dr_on_ground == 0
+end
+
+local function engine_on()
+    if not _ref_engn then return false end
+    local v = {}
+    XPLMGetDatavi(_ref_engn, v, 0, 2)
+    return v[1] == 1 or v[2] == 1
+end
+
+local function electrical_on()
+    if not _ref_volts then return false end
+    local v = {}
+    XPLMGetDatavf(_ref_volts, v, 0, 1)
+    return (v[1] or 0) > 1
+end
 
 -- ---- Config ------------------------------------------------
 --
