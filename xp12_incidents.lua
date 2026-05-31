@@ -183,12 +183,14 @@ local MEMORY_PATH    = SCRIPT_DIRECTORY .. "xp12_incidents_memory.txt"
 local memory_enabled = false   -- wird nach Bootstrap aktiviert
 
 -- ---- Startup-Popup -----------------------------------------
-local inc_popup_from  = nil   -- os.clock() + 5 nach Bootstrap
-local inc_popup_until = nil   -- os.clock() + 13 nach Bootstrap
+local inc_popup_from  = nil
+local inc_popup_until = nil
+local inc_popup_label = nil   -- optionale Aktionsmeldung (z.B. "PROFILE RESET")
 
-local function inc_trigger_popup()
+local function inc_trigger_popup(label)
     inc_popup_from  = os.clock()
     inc_popup_until = os.clock() + 5
+    inc_popup_label = label
 end
 
 local function save_memory()
@@ -603,7 +605,7 @@ function incidents_toggle()
         memory_enabled = was
         system_paused = true
     end
-    inc_trigger_popup()
+    inc_trigger_popup(system_paused and "-- PAUSED --" or "-- ACTIVE --")
 end
 
 create_command(
@@ -626,7 +628,7 @@ function incidents_reset_profile()
     rnd_fired     = false
     rnd_target    = nil
     if type(cfg.mode) == "number" then schedule_random() end
-    inc_trigger_popup()
+    inc_trigger_popup("-- PROFILE RESET --")
 end
 
 create_command(
@@ -652,7 +654,7 @@ function incidents_reload_config()
     rnd_fired     = false
     rnd_target    = nil
     if type(cfg.mode) == "number" then schedule_random() end
-    inc_trigger_popup()
+    inc_trigger_popup("-- CONFIG RELOADED --")
 end
 
 create_command(
@@ -691,13 +693,14 @@ function incidents_draw_status()
     -- Startup-Popup (unabhängig vom Macro-Status)
     local now = os.clock()
     if inc_popup_from and inc_popup_until and now >= inc_popup_from and now < inc_popup_until then
-        local font = 18
-        local bw   = font * 21
-        local bh   = font * 3.5
-        local sw   = SCREEN_WIDTH  or 1920
-        local sy   = SCREEN_HIGHT  or SCREEN_HEIGHT or 1080
-        local xpos = sw - bw - 40
-        local ypos = sy - (font * 6.3) - 400 - 10 - bh   -- 10px unter LandingRate-Box
+        local font   = 18
+        local lines  = inc_popup_label and 3 or 2
+        local bw     = font * 21
+        local bh     = font * (lines + 0.5)
+        local sw     = SCREEN_WIDTH  or 1920
+        local sy     = SCREEN_HIGHT  or SCREEN_HEIGHT or 1080
+        local xpos   = sw - bw - 40
+        local ypos   = sy - (font * 6.3) - 400 - 10 - bh
 
         local mode_str
         if system_paused then
@@ -711,10 +714,17 @@ function incidents_draw_status()
         XPLMSetGraphicsState(0, 0, 0, 1, 1, 0, 0)
         graphics.set_color(0, 0, 0, 0.3)
         graphics.draw_rectangle(xpos, ypos, xpos + bw, ypos + bh)
+        local ty = ypos + bh - 20
+        if inc_popup_label then
+            graphics.set_color(1, 0.8, 0.2, 1)
+            draw_string_Helvetica_18(xpos + 8, ty, inc_popup_label)
+            ty = ty - 22
+        end
         graphics.set_color(0.4, 0.8, 1, 1)
-        draw_string_Helvetica_18(xpos + 8, ypos + bh - 20, "xp12 Incidents")
+        draw_string_Helvetica_18(xpos + 8, ty, "xp12 Incidents")
+        ty = ty - 22
         graphics.set_color(1, 1, 1, 1)
-        draw_string_Helvetica_18(xpos + 8, ypos + bh - 42, "MODE: " .. mode_str .. "  |  " .. cfg.active_name)
+        draw_string_Helvetica_18(xpos + 8, ty, "MODE: " .. mode_str .. "  |  " .. cfg.active_name)
     end
 
     if not incidents_show_status then return end
