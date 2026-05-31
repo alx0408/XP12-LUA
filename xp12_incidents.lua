@@ -1,14 +1,15 @@
 -- ============================================================
 --  xp12_incidents.lua
 --  Custom Failure & Incident System für X-Plane 12
---  Aircraft: SimCoders B58 REP
+--  Aircraft: C172, SR22 (G1000), SimCoders B58 REP
 --  Requires: FlyWithLua NG+
 --
 --  Struktur:
---    [1] Framework  - Phasen-Tracking, Hilfsfunktionen
---    [2] Kategorie 1 - Umwelt-Events
---    [3] Kategorie 2 - Pech-Events
---    [4] Kategorie 3 - Latente Fehler
+--    [1] Framework  — Config, Profile, Helpers
+--    [2] Failures   — Datentabelle, gegliedert wie Config
+--    [3] Commands   — Generelle Commands + Per-Failure-Toggle
+--    [4] Macro      — Draw-Callback + add_macro
+--    [5] Init       — Bootstrap, Tick-Registrierung
 -- ============================================================
 
 math.randomseed(os.time())
@@ -18,320 +19,658 @@ math.randomseed(os.time())
 --  [1] FRAMEWORK
 -- ============================================================
 
--- ---- Flugphasen --------------------------------------------
-local PHASE_GROUND   = "ground"
-local PHASE_TAKEOFF  = "takeoff"
-local PHASE_CLIMB    = "climb"
-local PHASE_CRUISE   = "cruise"
-local PHASE_DESCENT  = "descent"
-local PHASE_APPROACH = "approach"
-local PHASE_LANDING  = "landing"
-
--- DataRefs Flugzustand
+-- ---- Condition DataRefs ------------------------------------
 dataref("dr_on_ground",  "sim/flightmodel/failures/onground_any")
-dataref("dr_airspeed",   "sim/flightmodel/position/indicated_airspeed")
-dataref("dr_agl",        "sim/flightmodel/position/y_agl")
-dataref("dr_vs",         "sim/flightmodel/position/vh_ind_fpm")
-dataref("dr_gs",         "sim/flightmodel/position/groundspeed")
+dataref("dr_engn_run0",  "sim/flightmodel/engine/ENGN_running[0]")
+dataref("dr_engn_run1",  "sim/flightmodel/engine/ENGN_running[1]")
+dataref("dr_bus_volts",  "sim/cockpit2/electrical/bus_volts[0]")
+dataref("dr_acf_icao",   "sim/aircraft/view/acf_ICAO")
 
-local current_phase = PHASE_GROUND
-local was_airborne = false   -- war das Flugzeug zuletzt in der Luft?
+local function airborne()       return dr_on_ground == 0 end
+local function engine_on()      return dr_engn_run0 == 1 or dr_engn_run1 == 1 end
+local function electrical_on()  return dr_bus_volts > 1 end
 
-function update_phase()
-    local gs_kts = dr_gs * 1.94384   -- Umrechnung m/s → Knoten
+-- ---- Config ------------------------------------------------
+--
+--  cfg.profiles  = { NAME = { icao={...}, failures={KEY={mtbf,fval}} } }
+--  cfg.active_*  = nach build_active_profile() gesetzt
 
-    if dr_on_ground == 1 then
-        if gs_kts > 5 then
-            -- Rollend am Boden: Herkunft entscheidet
-            if was_airborne then
-                current_phase = PHASE_LANDING   -- kam aus der Luft → Ausrollen
+local cfg = {
+    mode            = "ON",
+    default_mtbf    = 10000,
+    profiles        = {},
+    active_failures = {},
+    active_name     = "DEFAULT",
+}
+
+local CONFIG_PATH = SCRIPT_DIRECTORY .. "xp12_incidents_config.txt"
+
+local function parse_failure_entry(val_str)
+    local main, fval_s = val_str:match("^%s*([^;%s]+)%s*;?%s*(%d*)%s*$")
+    if not main then return "DEFAULT", 6 end
+    local fval = tonumber(fval_s) or 6
+    local mtbf
+    if     main == "OFF"     then mtbf = "OFF"
+    elseif main == "ON"      then mtbf = "ON"
+    elseif main == "DEFAULT" then mtbf = "DEFAULT"
+    else                          mtbf = tonumber(main) or "DEFAULT"
+    end
+    return mtbf, fval
+end
+
+local function load_config()
+    local file = io.open(CONFIG_PATH, "r")
+    if not file then return end
+
+    cfg.profiles = {}
+    local section = nil   -- aktiver Abschnittsname
+
+    for line in file:lines() do
+        line = line:match("^%s*(.-)%s*$")
+        if line ~= "" and not line:match("^#") and not line:match("^%-%-") then
+
+            -- Abschnitts-Header: [NAME]
+            local hdr = line:match("^%[([%w_]+)%]$")
+            if hdr then
+                section = hdr:upper()
+                if not cfg.profiles[section] then
+                    cfg.profiles[section] = { icao = {}, failures = {} }
+                end
+
             else
-                current_phase = PHASE_TAKEOFF   -- war am Boden → Startlauf
+                local key, val = line:match("^([%w_]+)%s*=%s*(.+)$")
+                if key and val then
+                    key = key:upper()
+                    val = val:match("^%s*(.-)%s*$")
+
+                    if not section then
+                        -- globale Einstellungen vor erstem Abschnitt
+                        if key == "MODE" then
+                            local n = tonumber(val)
+                            cfg.mode = n and n or val:upper()
+                        elseif key == "DEFAULT_MTBF" then
+                            cfg.default_mtbf = tonumber(val) or 10000
+                        end
+                    else
+                        if key == "MODE" then
+                            local n = tonumber(val)
+                            cfg.mode = n and n or val:upper()
+                        elseif key == "DEFAULT_MTBF" then
+                            cfg.default_mtbf = tonumber(val) or 10000
+                        elseif key == "ICAO" then
+                            -- kommagetrennte ICAO-Liste
+                            for icao in val:gmatch("[^,%s]+") do
+                                table.insert(cfg.profiles[section].icao, icao:upper())
+                            end
+                        else
+                            local mtbf, fval = parse_failure_entry(val)
+                            cfg.profiles[section].failures[key] = { mtbf = mtbf, fval = fval }
+                        end
+                    end
+                end
             end
-        else
-            current_phase = PHASE_GROUND        -- steht oder rollt sehr langsam
-            was_airborne = false                -- Reset: sauber für nächsten Start
         end
-    else
-        -- In der Luft
-        was_airborne = true
-        if dr_agl < 1000 and dr_vs > 200 then
-            current_phase = PHASE_TAKEOFF
-        elseif dr_vs > 200 then
-            current_phase = PHASE_CLIMB
-        elseif dr_agl < 2000 and dr_vs < -100 then
-            current_phase = PHASE_APPROACH
-        elseif dr_vs < -100 then
-            current_phase = PHASE_DESCENT
-        else
-            current_phase = PHASE_CRUISE
+    end
+    file:close()
+end
+
+-- ---- Aktives Profil auflösen -------------------------------
+--  Liest ICAO des geladenen Flugzeugs, sucht passendes Profil,
+--  merged DEFAULT + Profil-Overrides in cfg.active_failures.
+
+local function build_active_profile()
+    local icao = (dr_acf_icao or ""):upper():match("^%s*(.-)%s*$")
+
+    -- mit DEFAULT beginnen
+    cfg.active_failures = {}
+    cfg.active_name     = "DEFAULT"
+
+    local default = cfg.profiles["DEFAULT"]
+    if default then
+        for k, v in pairs(default.failures) do
+            cfg.active_failures[k] = v
+        end
+    end
+
+    -- passendes Profil suchen
+    for name, prof in pairs(cfg.profiles) do
+        if name ~= "DEFAULT" then
+            for _, pid in ipairs(prof.icao) do
+                if pid == icao then
+                    for k, v in pairs(prof.failures) do
+                        cfg.active_failures[k] = v
+                    end
+                    cfg.active_name = name
+                    break
+                end
+            end
         end
     end
 end
 
--- ---- MTBE-Hilfsfunktion ------------------------------------
-local function prob_from_mtbe(mtbe_hours, interval_sec)
-    local mtbe_sec = mtbe_hours * 3600
-    return interval_sec / mtbe_sec
+-- ---- MTBF-Wahrscheinlichkeit -------------------------------
+local function prob_from_mtbf(mtbf_hours, interval_sec)
+    return interval_sec / (mtbf_hours * 3600)
 end
 
--- ---- Reset bei neuem Flug ----------------------------------
-local reset_callbacks = {}
+-- ---- Fehlerspeicher ----------------------------------------
+local MEMORY_PATH    = SCRIPT_DIRECTORY .. "xp12_incidents_memory.txt"
+local memory_enabled = false   -- wird nach Bootstrap aktiviert
 
-local function register_reset(fn)
-    table.insert(reset_callbacks, fn)
+local function save_memory()
+    if not memory_enabled then return end
+    if cfg.active_name == "DEFAULT" then return end
+
+    -- bestehende Datei lesen, andere Profile erhalten
+    local sections = {}
+    local order    = {}
+    local cur      = nil
+    local file     = io.open(MEMORY_PATH, "r")
+    if file then
+        for line in file:lines() do
+            local hdr = line:match("^%[([%w_]+)%]$")
+            if hdr then
+                cur = hdr:upper()
+                if cur ~= cfg.active_name then
+                    if not sections[cur] then
+                        sections[cur] = {}
+                        table.insert(order, cur)
+                    end
+                end
+            elseif cur and cur ~= cfg.active_name then
+                table.insert(sections[cur], line)
+            end
+        end
+        file:close()
+    end
+
+    -- neu schreiben
+    file = io.open(MEMORY_PATH, "w")
+    if not file then return end
+    file:write("# xp12_incidents_memory.txt\n# Fehlerspeicher — automatisch generiert\n\n")
+
+    -- aktives Profil
+    file:write("[" .. cfg.active_name .. "]\n")
+    for _, f in ipairs(failures) do
+        local v = get_dr(f)
+        if v > 0 then
+            file:write(f.key .. " = " .. v .. "\n")
+        end
+    end
+    file:write("\n")
+
+    -- übrige Profile
+    for _, name in ipairs(order) do
+        file:write("[" .. name .. "]\n")
+        for _, ln in ipairs(sections[name]) do
+            file:write(ln .. "\n")
+        end
+        file:write("\n")
+    end
+    file:close()
 end
 
-local function run_resets()
-    for _, fn in ipairs(reset_callbacks) do fn() end
+local function load_memory()
+    if cfg.active_name == "DEFAULT" then return end
+    local file = io.open(MEMORY_PATH, "r")
+    if not file then return end
+    local in_section = false
+    for line in file:lines() do
+        line = line:match("^%s*(.-)%s*$")
+        if line ~= "" and not line:match("^#") then
+            local hdr = line:match("^%[([%w_]+)%]$")
+            if hdr then
+                in_section = (hdr:upper() == cfg.active_name)
+            elseif in_section then
+                local key, val = line:match("^([%w_]+)%s*=%s*(%d+)$")
+                if key and val then
+                    key = key:upper()
+                    local value = tonumber(val)
+                    for _, f in ipairs(failures) do
+                        if f.key == key and value and value > 0 then
+                            local _, flag = get_mtbf(f)
+                            if flag ~= "OFF" then set_dr(f, value) end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+    file:close()
 end
-
-run_resets()
 
 
 -- ============================================================
---  [2] KATEGORIE 1 - UMWELT-EVENTS
+--  [2] FAILURES
 -- ============================================================
+--
+--  Felder pro Eintrag:
+--    key       = Config-Key (string, uppercase)
+--    dr        = DataRef-Pfad
+--    label     = Anzeige-Label (Macro)
+--    condition = nil / "airborne" / "engine" / "engine_or_elec"
+--    interval  = Prüfintervall (Sekunden)
+--    _last     = letzter Prüfzeitpunkt (os.clock)
+--    _ref      = XPLMDataRef-Handle (gesetzt bei Init)
 
--- [noch keine DataRefs fuer Bird Strike ermittelt]
--- Module folgen sobald DataRefs bekannt
+local TICK_INTERVAL = 10   -- do_rarely: ~10 Sekunden
 
+local failures = {}
 
--- ============================================================
---  [3] KATEGORIE 2 - PECH-EVENTS
--- ============================================================
-
--- ------------------------------------------------------------
---  Modul: Pitot verstopft (Insekt / Debris)
--- ------------------------------------------------------------   
---  Hinweis:        stumm
---  Manuell:        Command "FlyWithLua/Incidents/pitot_fail"
---  Gegenmassnahme: toggle
--- ------------------------------------------------------------
-
-dataref("dr_pitot_fail", "sim/operation/failures/rel_pitot", "writable")
-
-local pitot = {
-    triggered      = false,
-    drifting       = false,
-    drift_elapsed  = 0,
-    last_check     = 0,
-    interval       = 120,   -- Prüfintervall in Sekunden
-    mtbe_hours     = 11,    -- mittlere Zeit bis zum Ereignis in Stunden
-    drift_duration = 60,    -- sofort ODER schleichend (~60 Sek.) - zufaellig
-}
-pitot.probability = prob_from_mtbe(pitot.mtbe_hours, pitot.interval)
-
-local function pitot_trigger_immediate()
-    dr_pitot_fail   = 6
-    pitot.triggered = true
-    pitot.drifting  = false
+local function def(key, dr_path, label, condition)
+    table.insert(failures, {
+        key       = key,
+        dr        = dr_path,
+        label     = label,
+        condition = condition,
+        _ref      = nil,
+    })
 end
 
-local function pitot_reset()
-    if dr_pitot_fail == 6 then dr_pitot_fail = 0 end
-    pitot.triggered     = false
-    pitot.drifting      = false
-    pitot.drift_elapsed = 0
-    pitot.last_check    = os.clock()
-end
-register_reset(pitot_reset)
+-- ---- ENVIRONMENT -------------------------------------------
+def("VASI",           "sim/operation/failures/rel_vasi",             "VASI",         nil)
+def("RWY_LIGHTS",     "sim/operation/failures/rel_rwy_lites",        "Rwy Lights",   nil)
+def("BIRD_ENG1",      "sim/operation/failures/rel_bird_strike_eng1", "Bird/Eng1",    "airborne")
+def("BIRD_ENG2",      "sim/operation/failures/rel_bird_strike_eng2", "Bird/Eng2",    "airborne")
+def("BIRD_RANDOM",    "sim/operation/failures/rel_bird_strike",      "Bird/Random",  "airborne")
 
-function pitot_toggle()
-    if pitot.triggered or pitot.drifting then
-        pitot_reset()       -- bereits aktiv → zurücksetzen
+-- ---- GENERAL -----------------------------------------------
+def("DOOR_OPEN",      "sim/operation/failures/rel_door_open",        "Door Open",    nil)
+
+-- ---- ENGINES -----------------------------------------------
+def("ENG_FAIL_1",     "sim/operation/failures/rel_engfai0",          "Eng Fail 1",   "engine")
+def("ENG_FAIL_2",     "sim/operation/failures/rel_engfai1",          "Eng Fail 2",   "engine")
+def("ENG_FIRE_1",     "sim/operation/failures/rel_engfir0",          "Eng Fire 1",   "engine")
+def("ENG_FIRE_2",     "sim/operation/failures/rel_engfir1",          "Eng Fire 2",   "engine")
+def("STARTER_1",      "sim/operation/failures/rel_startr0",          "Starter 1",    nil)
+def("STARTER_2",      "sim/operation/failures/rel_startr1",          "Starter 2",    nil)
+def("MAG_L1",         "sim/operation/failures/rel_magLFT0",          "Mag L Eng1",   nil)
+def("MAG_L2",         "sim/operation/failures/rel_magLFT1",          "Mag L Eng2",   nil)
+def("MAG_R1",         "sim/operation/failures/rel_magRGT0",          "Mag R Eng1",   nil)
+def("MAG_R2",         "sim/operation/failures/rel_magRGT1",          "Mag R Eng2",   nil)
+def("FUEL_PUMP_LO_1", "sim/operation/failures/rel_lo_press_fuepmp0", "FuelPmpLo 1",  nil)
+def("FUEL_PUMP_LO_2", "sim/operation/failures/rel_lo_press_fuepmp1", "FuelPmpLo 2",  nil)
+def("FUEL_PUMP_1",    "sim/operation/failures/rel_fuepmp0",          "Fuel Pump 1",  nil)
+def("FUEL_PUMP_2",    "sim/operation/failures/rel_fuepmp1",          "Fuel Pump 2",  nil)
+def("OIL_PRESS_LO_1", "sim/operation/failures/rel_eng_lo0",          "OilPressLo 1", nil)
+def("OIL_PRESS_LO_2", "sim/operation/failures/rel_eng_lo1",          "OilPressLo 2", nil)
+def("ELE_FUEL_PMP_1", "sim/operation/failures/rel_ele_fuepmp0",      "EleFuelPmp 1", nil)
+def("ELE_FUEL_PMP_2", "sim/operation/failures/rel_ele_fuepmp1",      "EleFuelPmp 2", nil)
+def("FUEL_FLOW_1",    "sim/operation/failures/rel_fuelfl0",          "Fuel Flow 1",  nil)
+def("FUEL_FLOW_2",    "sim/operation/failures/rel_fuelfl1",          "Fuel Flow 2",  nil)
+def("OIL_PUMP_1",     "sim/operation/failures/rel_oilpmp0",          "Oil Pump 1",   nil)
+def("OIL_PUMP_2",     "sim/operation/failures/rel_oilpmp1",          "Oil Pump 2",   nil)
+def("AIRFLOW_ENG1",   "sim/operation/failures/rel_airres0",          "Airflow Eng1", nil)
+
+-- ---- PROPELLERS --------------------------------------------
+def("PROP_FINE_1",    "sim/operation/failures/rel_prpfin0",          "Prop Fine 1",  nil)
+def("PROP_FINE_2",    "sim/operation/failures/rel_prpfin1",          "Prop Fine 2",  nil)
+def("PROP_COARSE_1",  "sim/operation/failures/rel_prpcrs0",          "PropCoarse 1", nil)
+def("PROP_COARSE_2",  "sim/operation/failures/rel_prpcrs1",          "PropCoarse 2", nil)
+def("PROP_SYNC",      "sim/operation/failures/rel_prop_sync",        "Prop Sync",    nil)
+
+-- ---- FUEL --------------------------------------------------
+def("FUEL_CAP",       "sim/operation/failures/rel_fuelcap",          "Fuel Cap",     nil)
+def("FUEL_LEAK",      "sim/operation/failures/rel_fuel_leak",        "Fuel Leak",    nil)
+def("FUEL_WATER",     "sim/operation/failures/rel_fuel_water",       "Fuel Water",   nil)
+def("FUEL_TYPE",      "sim/operation/failures/rel_fuel_type",        "Fuel Type",    nil)
+def("FUEL_BLOCK_1",   "sim/operation/failures/rel_fuel_block0",      "Fuel Blk 1",   nil)
+def("FUEL_BLOCK_2",   "sim/operation/failures/rel_fuel_block1",      "Fuel Blk 2",   nil)
+
+-- ---- ELECTRICAL --------------------------------------------
+def("SMOKE",          "sim/operation/failures/rel_smoke_cpit",       "Smoke",        "engine_or_elec")
+def("ELEC_BUS1",      "sim/operation/failures/rel_esys",             "Elec Bus 1",   nil)
+def("ELEC_BUS2",      "sim/operation/failures/rel_esys2",            "Elec Bus 2",   nil)
+def("INVERTER_1",     "sim/operation/failures/rel_invert0",          "Inverter 1",   nil)
+def("INVERTER_2",     "sim/operation/failures/rel_invert1",          "Inverter 2",   nil)
+def("GENERATOR_1",    "sim/operation/failures/rel_genera0",          "Generator 1",  nil)
+def("GENERATOR_2",    "sim/operation/failures/rel_genera1",          "Generator 2",  nil)
+def("BATTERY_1",      "sim/operation/failures/rel_batter0",          "Battery 1",    nil)
+def("BATTERY_2",      "sim/operation/failures/rel_batter1",          "Battery 2",    nil)
+def("GEN0_LO",        "sim/operation/failures/rel_gen0_lo",          "Gen0 V Low",   nil)
+def("GEN0_HI",        "sim/operation/failures/rel_gen0_hi",          "Gen0 V High",  nil)
+def("GEN1_LO",        "sim/operation/failures/rel_gen1_lo",          "Gen1 V Low",   nil)
+def("GEN1_HI",        "sim/operation/failures/rel_gen1_hi",          "Gen1 V High",  nil)
+def("BAT0_LO",        "sim/operation/failures/rel_bat0_lo",          "Bat0 V Low",   nil)
+def("BAT0_HI",        "sim/operation/failures/rel_bat0_hi",          "Bat0 V High",  nil)
+def("BAT1_LO",        "sim/operation/failures/rel_bat1_lo",          "Bat1 V Low",   nil)
+def("BAT1_HI",        "sim/operation/failures/rel_bat1_hi",          "Bat1 V High",  nil)
+def("AVIONICS_FAN",   "sim/operation/failures/rel_avionics_fan",     "Avionics Fan", nil)
+def("MAGNETOMETER",   "sim/operation/failures/rel_g_magmtr",         "Magnetomtr",   nil)
+
+-- ---- LIGHTS ------------------------------------------------
+def("LITES_NAV",      "sim/operation/failures/rel_lites_nav",        "Nav Lights",   nil)
+def("LITES_STROBE",   "sim/operation/failures/rel_lites_strobe",     "Strobes",      nil)
+def("LITES_BEACON",   "sim/operation/failures/rel_lites_beac",       "Beacon",       nil)
+def("LITES_TAXI",     "sim/operation/failures/rel_lites_taxi",       "Taxi Light",   nil)
+def("LITES_LANDING",  "sim/operation/failures/rel_lites_land",       "Ldg Lights",   nil)
+def("LITES_INST",     "sim/operation/failures/rel_lites_ins",        "Inst Lights",  nil)
+def("LITES_COCKPIT",  "sim/operation/failures/rel_clights",          "Cpit Lights",  nil)
+
+-- ---- AUTOPILOT ---------------------------------------------
+def("AP_COMPUTER",    "sim/operation/failures/rel_otto",             "AP Computer",  nil)
+def("AP_RUNAWAY",     "sim/operation/failures/rel_auto_runaway",     "AP Runaway",   nil)
+def("AP_SERVOS",      "sim/operation/failures/rel_auto_servos",      "AP Servos",    nil)
+def("AP_SERVO_RUDD",  "sim/operation/failures/rel_servo_rudd",       "AP Srv Rudd",  nil)
+def("AP_SERVO_AILN",  "sim/operation/failures/rel_servo_ailn",       "AP Srv Ailn",  nil)
+def("AP_SERVO_ELEV",  "sim/operation/failures/rel_servo_elev",       "AP Srv Elev",  nil)
+
+-- ---- SYSTEMS -----------------------------------------------
+def("PITOT_HEAT_1",   "sim/operation/failures/rel_ice_pitot_heat1",  "Pitot Heat 1", nil)
+def("PITOT_HEAT_2",   "sim/operation/failures/rel_ice_pitot_heat2",  "Pitot Heat 2", nil)
+def("AOA_HEAT",       "sim/operation/failures/rel_ice_AOA_heat",     "AOA Heat",     nil)
+def("WINDOW_HEAT",    "sim/operation/failures/rel_ice_window_heat",  "Window Heat",  nil)
+def("PROP_HEAT_1",    "sim/operation/failures/rel_ice_prop_heat",    "Prop Heat 1",  nil)
+def("PROP_HEAT_2",    "sim/operation/failures/rel_ice_prop_heat2",   "Prop Heat 2",  nil)
+def("TKS_PUMP",       "sim/operation/failures/rel_dice_tks_pump_0",  "TKS Pump",     nil)
+def("HVAC",           "sim/operation/failures/rel_HVAC",             "HVAC",         nil)
+def("VACUUM_1",       "sim/operation/failures/rel_vacuum",           "Vacuum 1",     nil)
+def("VACUUM_2",       "sim/operation/failures/rel_vacuum2",          "Vacuum 2",     nil)
+
+-- ---- INSTRUMENTS -------------------------------------------
+def("ASI_PILOT",      "sim/operation/failures/rel_ss_asi",           "ASI Pilot",    nil)
+def("AHZ_PILOT",      "sim/operation/failures/rel_ss_ahz",           "AHZ Pilot",    nil)
+def("ALT_PILOT",      "sim/operation/failures/rel_ss_alt",           "ALT Pilot",    nil)
+def("TSI_PILOT",      "sim/operation/failures/rel_ss_tsi",           "Turn Ind",     nil)
+def("DGY_PILOT",      "sim/operation/failures/rel_ss_dgy",           "Dir Gyro",     nil)
+def("VVI_PILOT",      "sim/operation/failures/rel_ss_vvi",           "VVI Pilot",    nil)
+def("AHZ_COPILOT",    "sim/operation/failures/rel_cop_ahz",          "AHZ Copilot",  nil)
+def("ALT_COPILOT",    "sim/operation/failures/rel_cop_alt",          "ALT Copilot",  nil)
+def("G_ASI",          "sim/operation/failures/rel_g_asi",            "G-ASI",        nil)
+def("G_ALT",          "sim/operation/failures/rel_g_alt",            "G-ALT",        nil)
+def("G_VVI",          "sim/operation/failures/rel_g_vvi",            "G-VVI",        nil)
+def("G430_GPS1",      "sim/operation/failures/rel_g430_gps1",        "G430 GPS 1",   nil)
+def("G430_GPS2",      "sim/operation/failures/rel_g430_gps2",        "G430 GPS 2",   nil)
+def("G430_NAV1",      "sim/operation/failures/rel_g430_rad1_tune",   "G430 Nav 1",   nil)
+def("G430_NAV2",      "sim/operation/failures/rel_g430_rad2_tune",   "G430 Nav 2",   nil)
+def("G_PFD",          "sim/operation/failures/rel_g_pfd",            "PFD",          nil)
+def("G_MFD",          "sim/operation/failures/rel_g_mfd",            "MFD",          nil)
+def("WXR_RADAR",      "sim/operation/failures/rel_wxr_radar",        "WX Radar",     nil)
+def("G_GIA1",         "sim/operation/failures/rel_g_gia1",           "GIA 1",        nil)
+def("G_GIA2",         "sim/operation/failures/rel_g_gia2",           "GIA 2",        nil)
+def("G_GEA",          "sim/operation/failures/rel_g_gea",            "GEA",          nil)
+def("NAVCOM1",        "sim/operation/failures/rel_navcom1",           "NavCom 1",     nil)
+def("NAVCOM2",        "sim/operation/failures/rel_navcom2",           "NavCom 2",     nil)
+def("NAV1",           "sim/operation/failures/rel_nav1",             "NAV 1",        nil)
+def("NAV2",           "sim/operation/failures/rel_nav2",             "NAV 2",        nil)
+def("COM1",           "sim/operation/failures/rel_com1",             "COM 1",        nil)
+def("COM2",           "sim/operation/failures/rel_com2",             "COM 2",        nil)
+def("ADF1",           "sim/operation/failures/rel_adf1",             "ADF 1",        nil)
+def("GPS",            "sim/operation/failures/rel_gps",              "GPS",          nil)
+def("DME",            "sim/operation/failures/rel_dme",              "DME",          nil)
+def("LOC",            "sim/operation/failures/rel_loc",              "LOC",          nil)
+def("GLS",            "sim/operation/failures/rel_gls",              "Glide Slope",  nil)
+def("XPNDR",          "sim/operation/failures/rel_xpndr",            "Transponder",  nil)
+def("MARKER",         "sim/operation/failures/rel_marker",           "Markers",      nil)
+def("RPM_IND_1",      "sim/operation/failures/rel_RPM_ind_0",        "RPM Ind 1",    nil)
+def("RPM_IND_2",      "sim/operation/failures/rel_RPM_ind_1",        "RPM Ind 2",    nil)
+def("MP_IND_1",       "sim/operation/failures/rel_MP_ind_0",         "MP Ind 1",     nil)
+def("MP_IND_2",       "sim/operation/failures/rel_MP_ind_1",         "MP Ind 2",     nil)
+def("CHT_IND_1",      "sim/operation/failures/rel_CHT_ind_0",        "CHT Ind 1",    nil)
+def("CHT_IND_2",      "sim/operation/failures/rel_CHT_ind_1",        "CHT Ind 2",    nil)
+def("EGT_IND_1",      "sim/operation/failures/rel_EGT_ind_0",        "EGT Ind 1",    nil)
+def("EGT_IND_2",      "sim/operation/failures/rel_EGT_ind_1",        "EGT Ind 2",    nil)
+def("FF_IND_1",       "sim/operation/failures/rel_FF_ind0",          "FF Ind 1",     nil)
+def("FF_IND_2",       "sim/operation/failures/rel_FF_ind1",          "FF Ind 2",     nil)
+def("FUEL_P_IND_1",   "sim/operation/failures/rel_fp_ind_0",         "FuelP Ind 1",  nil)
+def("FUEL_P_IND_2",   "sim/operation/failures/rel_fp_ind_1",         "FuelP Ind 2",  nil)
+def("OIL_P_IND_1",    "sim/operation/failures/rel_oilp_ind_0",       "OilP Ind 1",   nil)
+def("OIL_P_IND_2",    "sim/operation/failures/rel_oilp_ind_1",       "OilP Ind 2",   nil)
+def("OIL_T_IND_1",    "sim/operation/failures/rel_oilt_ind_0",       "OilT Ind 1",   nil)
+def("OIL_T_IND_2",    "sim/operation/failures/rel_oilt_ind_1",       "OilT Ind 2",   nil)
+def("STALL_WARN",     "sim/operation/failures/rel_stall_warn",       "Stall Warn",   nil)
+def("GEAR_WARN",      "sim/operation/failures/rel_gear_warning",     "Gear Warn",    nil)
+
+-- ---- SENSORS -----------------------------------------------
+def("PITOT",          "sim/operation/failures/rel_pitot",            "Pitot",        nil)
+def("PITOT_2",        "sim/operation/failures/rel_pitot2",           "Pitot 2",      nil)
+def("PITOT_STBY",     "sim/operation/failures/rel_pitot_stby",       "Pitot Stby",   nil)
+def("STATIC",         "sim/operation/failures/rel_static",           "Static",       nil)
+def("STATIC_2",       "sim/operation/failures/rel_static2",          "Static 2",     nil)
+def("STATIC_ERR_1",   "sim/operation/failures/rel_static1_err",      "Static Err 1", nil)
+def("STATIC_ERR_2",   "sim/operation/failures/rel_static2_err",      "Static Err 2", nil)
+def("STATIC_STBY",    "sim/operation/failures/rel_static_stby",      "Static Stby",  nil)
+def("OAT",            "sim/operation/failures/rel_g_oat",            "OAT",          nil)
+def("ICE_DETECT",     "sim/operation/failures/rel_ice_detect",       "Ice Detect",   nil)
+def("FUEL_QTY",       "sim/operation/failures/rel_g_fuel",           "Fuel Qty",     nil)
+
+-- ---- GEAR --------------------------------------------------
+def("GEAR_ACT",       "sim/operation/failures/rel_gear_act",         "Gear Act",     nil)
+def("GEAR_IND",       "sim/operation/failures/rel_gear_ind",         "Gear Ind",     nil)
+def("GEAR_RET_1",     "sim/operation/failures/rel_lagear1",          "Gear Ret 1",   nil)
+def("GEAR_RET_2",     "sim/operation/failures/rel_lagear2",          "Gear Ret 2",   nil)
+def("GEAR_RET_3",     "sim/operation/failures/rel_lagear3",          "Gear Ret 3",   nil)
+def("GEAR_COL_1",     "sim/operation/failures/rel_collapse1",        "Gear Col 1",   nil)
+def("GEAR_COL_2",     "sim/operation/failures/rel_collapse2",        "Gear Col 2",   nil)
+def("GEAR_COL_3",     "sim/operation/failures/rel_collapse3",        "Gear Col 3",   nil)
+def("TIRE_1",         "sim/operation/failures/rel_tire1",            "Tire 1",       nil)
+def("TIRE_2",         "sim/operation/failures/rel_tire2",            "Tire 2",       nil)
+def("TIRE_3",         "sim/operation/failures/rel_tire3",            "Tire 3",       nil)
+def("TIRE_4",         "sim/operation/failures/rel_tire4",            "Tire 4",       nil)
+def("TIRE_5",         "sim/operation/failures/rel_tire5",            "Tire 5",       nil)
+def("BRAKES_L",       "sim/operation/failures/rel_lbrakes",          "Brakes L",     nil)
+def("BRAKES_R",       "sim/operation/failures/rel_rbrakes",          "Brakes R",     nil)
+
+-- ---- CONTROLS ----------------------------------------------
+def("FLAP_ACT",       "sim/operation/failures/rel_flap_act",         "Flap Act",     nil)
+def("FLAP_ACT_L",     "sim/operation/failures/rel_fc_L_flp",         "Flap Act L",   nil)
+def("FLAP_ACT_R",     "sim/operation/failures/rel_fc_R_flp",         "Flap Act R",   nil)
+def("RUD_TRIM_RUN",   "sim/operation/failures/rel_rud_trim_run",      "Rud Trim Run", nil)
+def("AIL_TRIM_RUN",   "sim/operation/failures/rel_ail_trim_run",      "Ail Trim Run", nil)
+def("ELV_TRIM_RUN",   "sim/operation/failures/rel_elv_trim_run",      "Elv Trim Run", nil)
+
+-- ---- DataRef-Handles ---------------------------------------
+local function init_refs()
+    for _, f in ipairs(failures) do
+        f._ref = XPLMFindDataRef(f.dr)
+    end
+end
+
+local function get_dr(f)
+    if not f._ref then return 0 end
+    return XPLMGetDatai(f._ref)
+end
+
+local function set_dr(f, value)
+    if not f._ref then return end
+    XPLMSetDatai(f._ref, value)
+end
+
+-- ---- Bedingung prüfen --------------------------------------
+local function condition_ok(f)
+    if     f.condition == "airborne"       then return airborne()
+    elseif f.condition == "engine"         then return engine_on()
+    elseif f.condition == "engine_or_elec" then return engine_on() or electrical_on()
+    end
+    return true
+end
+
+-- ---- Config-Zugriff für Failure ----------------------------
+local function get_mtbf(f)
+    local fc = cfg.active_failures[f.key]
+    if not fc then return cfg.default_mtbf, nil end
+    if fc.mtbf == "OFF"     then return nil, "OFF" end
+    if fc.mtbf == "ON"      then return nil, "ON"  end
+    if fc.mtbf == "DEFAULT" then return cfg.default_mtbf, nil end
+    return fc.mtbf, nil
+end
+
+local function get_fval(f)
+    local fc = cfg.active_failures[f.key]
+    return fc and (fc.fval or 6) or 6
+end
+
+-- ---- Failure auslösen / zurücksetzen -----------------------
+local function trigger_failure(f)
+    local fval = get_fval(f)
+    if fval == 1 then
+        set_dr(f, math.random(2) == 1 and 1 or 6)
     else
-        pitot_trigger_immediate()   -- nicht aktiv → auslösen
+        set_dr(f, 6)
+    end
+    save_memory()
+end
+
+local function reset_failure(f)
+    if get_dr(f) > 0 then
+        set_dr(f, 0)
+        save_memory()
+    end
+end
+
+-- ---- Laufzeit-Toggle (unabhängig von cfg.mode) -------------
+local system_paused = false   -- true = manuell pausiert, Memory bleibt erhalten
+
+-- ---- RANDOM-Modus ------------------------------------------
+local rnd_scheduled = false
+local rnd_fired     = false
+local rnd_target    = nil
+local rnd_fire_at   = 0
+
+local function schedule_random()
+    if type(cfg.mode) ~= "number" then return end
+    local eligible = {}
+    for _, f in ipairs(failures) do
+        local _, flag = get_mtbf(f)
+        if flag ~= "OFF" then table.insert(eligible, f) end
+    end
+    if #eligible == 0 then return end
+    rnd_target    = eligible[math.random(#eligible)]
+    rnd_fire_at   = os.clock() + math.random(0, math.floor(cfg.mode * 60))
+    rnd_fired     = false
+    rnd_scheduled = true
+end
+
+
+-- ============================================================
+--  [3] COMMANDS
+-- ============================================================
+
+function incidents_toggle()
+    if system_paused then
+        -- Resume: Memory wiederherstellen, keine DataRef-Änderungen nötig
+        system_paused = false
+        load_memory()
+    else
+        -- Pause: DataRefs zurücksetzen, Memory NICHT anfassen
+        local was = memory_enabled
+        memory_enabled = false
+        for _, f in ipairs(failures) do reset_failure(f) end
+        memory_enabled = was
+        system_paused = true
     end
 end
 
 create_command(
-    "FlyWithLua/Incidents/pitot_fail",
-    "Pitot blockiert (manuell, Toggle)",
-    "pitot_toggle()",
-    "",
-    ""
+    "FlyWithLua/Incidents/toggle_system",
+    "Incidents: System ON/OFF umschalten",
+    "incidents_toggle()",
+    "", ""
 )
 
-function pitot_tick()
-    if dr_pitot_fail == 6 and not pitot.triggered and not pitot.drifting then
-        pitot.triggered = true
-    elseif dr_pitot_fail ~= 6 and pitot.triggered then
-        pitot.triggered = false
+function incidents_reset_profile()
+    local was_enabled = memory_enabled
+    memory_enabled = false          -- Einzel-Saves während Loop unterdrücken
+    for _, f in ipairs(failures) do
+        reset_failure(f)
     end
-
-    if pitot.triggered and not pitot.drifting then return end
-
-    if pitot.drifting then
-        pitot.drift_elapsed = pitot.drift_elapsed + DELTA_TIME
-        if pitot.drift_elapsed >= pitot.drift_duration then
-            dr_pitot_fail   = 6
-            pitot.drifting  = false
-            pitot.triggered = true
-        end
-        return
-    end
-
-    local now = os.clock()
-    if (now - pitot.last_check) < pitot.interval then return end
-    pitot.last_check = now
-
-    if math.random() > pitot.probability then return end
-
-    if math.random(2) == 1 then
-        pitot_trigger_immediate()
-    else
-        pitot.drifting      = true
-        pitot.drift_elapsed = 0
-    end
-end
-
-do_sometimes("pitot_tick()")
-
-
--- ------------------------------------------------------------
---  Modul: Static Port verstopft (Insekt / Debris)
--- ------------------------------------------------------------
---  Hinweis:        stumm
---  Manuell:        Command "FlyWithLua/Incidents/static_fail"
---  Gegenmassnahme: toggle
--- ------------------------------------------------------------
-
-dataref("dr_static_fail", "sim/operation/failures/rel_static", "writable")
-
-local static = {
-    triggered      = false,
-    drifting       = false,
-    drift_elapsed  = 0,
-    last_check     = 0,
-    interval       = 120,
-    mtbe_hours     = 11,
-    drift_duration = 60,
-}
-static.probability = prob_from_mtbe(static.mtbe_hours, static.interval)
-
-local function static_trigger_immediate()
-    dr_static_fail   = 6
-    static.triggered = true
-    static.drifting  = false
-end
-
-local function static_reset()
-    if dr_static_fail == 6 then dr_static_fail = 0 end
-    static.triggered     = false
-    static.drifting      = false
-    static.drift_elapsed = 0
-    static.last_check    = os.clock()
-end
-register_reset(static_reset)
-
-function static_toggle()
-    if static.triggered or static.drifting then
-        static_reset()
-    else
-        static_trigger_immediate()
-    end
+    memory_enabled = was_enabled
+    save_memory()                   -- bei DEFAULT: No-Op; bei benanntem Profil: geleert,
+                                    -- andere Profile in der Datei bleiben erhalten
+    rnd_scheduled = false
+    rnd_fired     = false
+    rnd_target    = nil
+    if type(cfg.mode) == "number" then schedule_random() end
 end
 
 create_command(
-    "FlyWithLua/Incidents/static_fail",
-    "Static Port verstopft (manuell, Toggle)",
-    "static_toggle()",
-    "",
-    ""
+    "FlyWithLua/Incidents/reset_profile",
+    "Incidents: Profil zurücksetzen",
+    "incidents_reset_profile()",
+    "", ""
 )
 
-function static_tick()
-    if dr_static_fail == 6 and not static.triggered and not static.drifting then
-        static.triggered = true
-    elseif dr_static_fail ~= 6 and static.triggered then
-        static.triggered = false
-    end
-
-    if static.triggered and not static.drifting then return end
-
-    if static.drifting then
-        static.drift_elapsed = static.drift_elapsed + DELTA_TIME
-        if static.drift_elapsed >= static.drift_duration then
-            dr_static_fail   = 6
-            static.drifting  = false
-            static.triggered = true
-        end
-        return
-    end
-
-    local now = os.clock()
-    if (now - static.last_check) < static.interval then return end
-    static.last_check = now
-
-    if math.random() > static.probability then return end
-
-    if math.random(2) == 1 then
-        static_trigger_immediate()
-    else
-        static.drifting      = true
-        static.drift_elapsed = 0
-    end
+function incidents_reload_config()
+    load_config()
+    build_active_profile()
+    -- keine DataRef-Änderungen: aktive Failures bleiben erhalten
+    rnd_scheduled = false
+    rnd_fired     = false
+    rnd_target    = nil
+    if type(cfg.mode) == "number" then schedule_random() end
 end
 
-do_sometimes("static_tick()")
+create_command(
+    "FlyWithLua/Incidents/reload_config",
+    "Incidents: Config neu einlesen",
+    "incidents_reload_config()",
+    "", ""
+)
+
+-- ---- Per-Failure Toggle ------------------------------------
+local function make_toggle(f)
+    local fn = "incidents_toggle_" .. f.key:lower()
+    _G[fn] = function()
+        if get_dr(f) > 0 then reset_failure(f) else trigger_failure(f) end
+    end
+    create_command(
+        "FlyWithLua/Incidents/" .. f.key:lower(),
+        "Incidents: Toggle " .. f.label,
+        fn .. "()",
+        "", ""
+    )
+end
+
+for _, f in ipairs(failures) do
+    make_toggle(f)
+end
 
 
 -- ============================================================
---  [4] KATEGORIE 3 - LATENTE FEHLER
+--  [4] MACRO / STATUS
 -- ============================================================
 
--- [Module folgen]
-
-
--- ============================================================
---  [5] STATUS-ANZEIGE (Prüfmodus)
--- ============================================================
-
-incidents_show_status = false   -- wird per Makro ein/ausgeschaltet
+incidents_show_status = false
 
 function incidents_draw_status()
     if not incidents_show_status then return end
 
-    local x  = 20
-    local sy = (SCREEN_HIGHT or SCREEN_HEIGHT or 1080)
+    local x  = 100
+    local sy = SCREEN_HIGHT or SCREEN_HEIGHT or 1080
     local y  = sy - 60
 
-    -- Titel
-    draw_string(x, y,      "[xp12 Incidents]")
-
-    -- Flugphase
-    draw_string(x, y - 20, "Phase:  " .. current_phase)
-
-    -- Pitot
-    local pitot_text
-    if pitot.triggered then
-        pitot_text = "AKTIV"
-    elseif pitot.drifting then
-        local pct = math.floor((pitot.drift_elapsed / pitot.drift_duration) * 100)
-        pitot_text = "schleichend (" .. pct .. "%)"
+    local mode_str
+    if system_paused then
+        mode_str = "OFF"
+    elseif type(cfg.mode) == "number" then
+        mode_str = "RANDOM (" .. cfg.mode .. " min)"
     else
-        pitot_text = "OK"
+        mode_str = tostring(cfg.mode)
     end
-    draw_string(x, y - 40, "Pitot:  " .. pitot_text)
 
-    -- Static Port
-    local static_text
-    if static.triggered then
-        static_text = "AKTIV"
-    elseif static.drifting then
-        local pct = math.floor((static.drift_elapsed / static.drift_duration) * 100)
-        static_text = "schleichend (" .. pct .. "%)"
-    else
-        static_text = "OK"
+    graphics.set_color(1, 1, 1, 1)
+    draw_string_Helvetica_18(x, y, "[xp12 Incidents]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name)
+    y = y - 20
+
+    for _, f in ipairs(failures) do
+        local v = get_dr(f)
+        if v == 6 then
+            graphics.set_color(1, 0.2, 0.2, 1)
+            draw_string_Helvetica_18(x, y, f.label .. ":   FAIL")
+            y = y - 20
+        elseif v == 1 then
+            graphics.set_color(1, 1, 0, 1)
+            draw_string_Helvetica_18(x, y, f.label .. ":   intermittent")
+            y = y - 20
+        end
     end
-    draw_string(x, y - 60, "Static: " .. static_text)
 end
 
 do_every_draw("incidents_draw_status()")
 
 add_macro(
-    "xp12 Incidents: Status anzeigen",
+    "xp12 Incidents: Status",
     "incidents_show_status = true",
     "incidents_show_status = false",
     "deactivate"
@@ -339,7 +678,62 @@ add_macro(
 
 
 -- ============================================================
---  FRAMEWORK-TICK (Phasen-Update)
+--  [5] INITIALIZATION
 -- ============================================================
 
-do_often("update_phase()")
+function incidents_tick()
+    if system_paused then return end
+    if cfg.mode == "OFF" then return end
+
+    if type(cfg.mode) == "number" then
+        if rnd_scheduled and not rnd_fired and os.clock() >= rnd_fire_at then
+            local f = rnd_target
+            if f and condition_ok(f) then
+                trigger_failure(f)
+                rnd_fired = true
+            end
+        end
+        return
+    end
+
+    for _, f in ipairs(failures) do
+        if get_dr(f) == 0 then
+            local mtbf, flag = get_mtbf(f)
+            if flag == "ON" and condition_ok(f) then
+                trigger_failure(f)
+            elseif flag ~= "OFF" and mtbf then
+                if math.random() < prob_from_mtbf(mtbf, TICK_INTERVAL) then
+                    if condition_ok(f) then trigger_failure(f) end
+                end
+            end
+        end
+    end
+end
+
+do_rarely("incidents_tick()")
+
+-- ---- Bootstrap ---------------------------------------------
+load_config()
+init_refs()
+build_active_profile()
+
+-- ON/OFF aus Config anwenden
+for _, f in ipairs(failures) do
+    local _, flag = get_mtbf(f)
+    if     flag == "ON"  then trigger_failure(f)
+    elseif flag == "OFF" then reset_failure(f)
+    end
+end
+
+-- Fehlerspeicher wiederherstellen (überschreibt Config-ON-Einträge)
+load_memory()
+
+-- Startmodus aus Config übernehmen
+system_paused = (cfg.mode == "OFF")
+
+-- ab jetzt Änderungen speichern
+memory_enabled = true
+
+if type(cfg.mode) == "number" then
+    schedule_random()
+end
