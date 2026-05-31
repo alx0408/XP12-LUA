@@ -228,9 +228,11 @@ local function save_memory()
     -- aktives Profil
     file:write("[" .. cfg.active_name .. "]\n")
     for _, f in ipairs(failures) do
-        local v = get_dr(f)
-        if v > 0 then
-            file:write(f.key .. " = " .. v .. "\n")
+        if not f.no_memory then
+            local v = get_dr(f)
+            if v > 0 then
+                file:write(f.key .. " = " .. v .. "\n")
+            end
         end
     end
     file:write("\n")
@@ -263,7 +265,7 @@ local function load_memory()
                     key = key:upper()
                     local value = tonumber(val)
                     for _, f in ipairs(failures) do
-                        if f.key == key and (value == 1 or value == 6) then
+                        if f.key == key and not f.no_memory and (value == 1 or value == 6) then
                             local _, flag = get_mtbf(f)
                             if flag ~= "OFF" then set_dr(f, value) end
                             break
@@ -295,22 +297,23 @@ local tick_last     = 0
 
 failures = {}
 
-local function def(key, dr_path, label, condition)
+local function def(key, dr_path, label, condition, no_memory)
     table.insert(failures, {
         key       = key,
         dr        = dr_path,
         label     = label,
         condition = condition,
+        no_memory = no_memory,
         _ref      = nil,
     })
 end
 
 -- ---- ENVIRONMENT -------------------------------------------
-def("VASI",           "sim/operation/failures/rel_vasi",             "VASI",         nil)
-def("RWY_LIGHTS",     "sim/operation/failures/rel_rwy_lites",        "Rwy Lights",   nil)
-def("BIRD_ENG1",      "sim/operation/failures/rel_bird_strike_eng1", "Bird/Eng1",    "airborne")
-def("BIRD_ENG2",      "sim/operation/failures/rel_bird_strike_eng2", "Bird/Eng2",    "airborne")
-def("BIRD_RANDOM",    "sim/operation/failures/rel_bird_strike",      "Bird/Random",  "airborne")
+def("VASI",           "sim/operation/failures/rel_vasi",             "VASI",         nil,        true)
+def("RWY_LIGHTS",     "sim/operation/failures/rel_rwy_lites",        "Rwy Lights",   nil,        true)
+def("BIRD_ENG1",      "sim/operation/failures/rel_bird_strike_eng1", "Bird/Eng1",    "airborne", true)
+def("BIRD_ENG2",      "sim/operation/failures/rel_bird_strike_eng2", "Bird/Eng2",    "airborne", true)
+def("BIRD_RANDOM",    "sim/operation/failures/rel_bird_strike",      "Bird/Random",  "airborne", true)
 
 -- ---- GENERAL -----------------------------------------------
 def("DOOR_OPEN",      "sim/operation/failures/rel_door_open",        "Door Open",    nil)
