@@ -262,3 +262,122 @@ PROP_SYNC         = OFF
 
 # ---- ENVIRONMENT -------------------------------------------
 
+
+# ============================================================
+#  C172 — Cessna 172 (Dampfmesser, Einmot, Festfahrwerk)
+# ============================================================
+
+[C172]
+ICAO = C172
+
+# ---- ENGINES (Einmot) --------------------------------------
+ENG_FAIL_2        = OFF
+ENG_FIRE_2        = OFF
+STARTER_2         = OFF
+MAG_L2            = OFF
+MAG_R2            = OFF
+FUEL_PUMP_LO_2    = OFF
+FUEL_PUMP_2       = OFF
+OIL_PRESS_LO_2    = OFF
+ELE_FUEL_PMP_2    = OFF
+FUEL_FLOW_2       = OFF
+OIL_PUMP_2        = OFF
+
+# ---- PROPELLERS (kein zweiter Motor) -----------------------
+PROP_FINE_2       = OFF
+PROP_COARSE_2     = OFF
+PROP_SYNC         = OFF
+
+# ---- ELECTRICAL (kein zweiter Generator/Batterie) ----------
+GEN1_LO           = OFF
+GEN1_HI           = OFF
+BAT1_LO           = OFF
+BAT1_HI           = OFF
+INVERTER_2        = OFF
+
+# ---- INSTRUMENTS (keine Copilot-Instrumente, kein G1000) ---
+AHZ_COPILOT       = OFF
+ALT_COPILOT       = OFF
+G_ASI             = OFF
+G_ALT             = OFF
+G_VVI             = OFF
+G430_GPS1         = OFF
+G430_GPS2         = OFF
+G430_NAV1         = OFF
+G430_NAV2         = OFF
+G_PFD             = OFF
+G_MFD             = OFF
+WXR_RADAR         = OFF
+G_GIA1            = OFF
+G_GIA2            = OFF
+G_GEA             = OFF
+
+# ---- SYSTEMS (kein TKS, keine Prop-Enteiser) ---------------
+PROP_HEAT_1       = OFF
+PROP_HEAT_2       = OFF
+TKS_PUMP          = OFF
+
+# ---- GEAR (Festfahrwerk) -----------------------------------
+GEAR_ACT          = OFF
+GEAR_IND          = OFF
+GEAR_RET_1        = OFF
+GEAR_RET_2        = OFF
+GEAR_RET_3        = OFF
+
+# ---- ENVIRONMENT (Einmot) ----------------------------------
+BIRD_ENG2         = OFF
+
+
+# ============================================================
+#  SR22 — Cirrus SR22 G1000 (Einmot, Festfahrwerk, G1000)
+# ============================================================
+
+[SR22]
+ICAO = SR22
+
+# ---- ENGINES (Einmot) --------------------------------------
+ENG_FAIL_2        = OFF
+ENG_FIRE_2        = OFF
+STARTER_2         = OFF
+MAG_L2            = OFF
+MAG_R2            = OFF
+FUEL_PUMP_LO_2    = OFF
+FUEL_PUMP_2       = OFF
+OIL_PRESS_LO_2    = OFF
+ELE_FUEL_PMP_2    = OFF
+FUEL_FLOW_2       = OFF
+OIL_PUMP_2        = OFF
+
+# ---- PROPELLERS (kein zweiter Motor, kein Sync) ------------
+PROP_FINE_2       = OFF
+PROP_COARSE_2     = OFF
+PROP_SYNC         = OFF
+
+# ---- ELECTRICAL (kein zweiter Generator/Batterie) ----------
+GEN1_LO           = OFF
+GEN1_HI           = OFF
+BAT1_LO           = OFF
+BAT1_HI           = OFF
+INVERTER_2        = OFF
+
+# ---- INSTRUMENTS (G1000, keine Copilot-Instrumente) --------
+AHZ_COPILOT       = OFF
+ALT_COPILOT       = OFF
+G430_GPS1         = OFF
+G430_GPS2         = OFF
+G430_NAV1         = OFF
+G430_NAV2         = OFF
+
+# ---- SYSTEMS (TKS aktiv, keine Prop-Enteiser) --------------
+PROP_HEAT_1       = OFF
+PROP_HEAT_2       = OFF
+
+# ---- GEAR (Festfahrwerk) -----------------------------------
+GEAR_ACT          = OFF
+GEAR_IND          = OFF
+GEAR_RET_1        = OFF
+GEAR_RET_2        = OFF
+GEAR_RET_3        = OFF
+
+# ---- ENVIRONMENT (Einmot) ----------------------------------
+BIRD_ENG2         = OFF
