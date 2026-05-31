@@ -261,16 +261,6 @@ PROP_COARSE_2     = OFF
 PROP_SYNC         = OFF
 
 # ---- ELECTRICAL --------------------------------------------
-ELEC_BUS1         = OFF
-ELEC_BUS2         = OFF
-INVERTER_1        = OFF
-INVERTER_2        = OFF
-GENERATOR_1       = OFF
-GENERATOR_2       = OFF
-GEN0_LO           = OFF
-GEN0_HI           = OFF
-GEN1_LO           = OFF
-GEN1_HI           = OFF
 BATTERY_1         = OFF
 BATTERY_2         = OFF
 BAT0_LO           = OFF
@@ -281,13 +271,6 @@ AVIONICS_FAN      = OFF
 MAGNETOMETER      = OFF
 
 # ---- LIGHTS ------------------------------------------------
-LITES_NAV         = OFF
-LITES_STROBE      = OFF
-LITES_BEACON      = OFF
-LITES_TAXI        = OFF
-LITES_LANDING     = OFF
-LITES_INST        = OFF
-LITES_COCKPIT     = OFF
 
 # ---- AUTOPILOT ---------------------------------------------
 AP_COMPUTER       = OFF
@@ -298,25 +281,13 @@ AP_SERVO_AILN     = OFF
 AP_SERVO_ELEV     = OFF
 
 # ---- SYSTEMS -----------------------------------------------
-PITOT_HEAT_1      = OFF
 PITOT_HEAT_2      = OFF
-AOA_HEAT          = OFF
-WINDOW_HEAT       = OFF
-PROP_HEAT_1       = OFF
-PROP_HEAT_2       = OFF
 TKS_PUMP          = OFF
 HVAC              = OFF
-VACUUM_1          = OFF
-VACUUM_2          = OFF
 
 # ---- INSTRUMENTS -------------------------------------------
 ASI_PILOT         = OFF
-AHZ_PILOT         = OFF
 ALT_PILOT         = OFF
-TSI_PILOT         = OFF
-DGY_PILOT         = OFF
-VVI_PILOT         = OFF
-AHZ_COPILOT       = OFF
 ALT_COPILOT       = OFF
 G_ASI             = OFF
 G_ALT             = OFF
@@ -338,15 +309,8 @@ COM1              = OFF
 COM2              = OFF
 ADF1              = OFF
 GPS               = OFF
-DME               = OFF
-LOC               = OFF
-GLS               = OFF
 XPNDR             = OFF
 MARKER            = OFF
-RPM_IND_1         = OFF
-RPM_IND_2         = OFF
-MP_IND_1          = OFF
-MP_IND_2          = OFF
 CHT_IND_1         = OFF
 CHT_IND_2         = OFF
 EGT_IND_1         = OFF
@@ -359,21 +323,12 @@ OIL_P_IND_1       = OFF
 OIL_P_IND_2       = OFF
 OIL_T_IND_1       = OFF
 OIL_T_IND_2       = OFF
-STALL_WARN        = OFF
-GEAR_WARN         = OFF
 
 # ---- SENSORS -----------------------------------------------
-PITOT             = OFF
-PITOT_2           = OFF
 PITOT_STBY        = OFF
-STATIC            = OFF
 STATIC_2          = OFF
-STATIC_ERR_1      = OFF
 STATIC_ERR_2      = OFF
-STATIC_STBY       = OFF
-OAT               = OFF
 ICE_DETECT        = OFF
-FUEL_QTY          = OFF
 
 # ---- GEAR --------------------------------------------------
 GEAR_ACT          = OFF
@@ -393,12 +348,9 @@ BRAKES_L          = OFF
 BRAKES_R          = OFF
 
 # ---- CONTROLS ----------------------------------------------
-FLAP_ACT          = OFF
-FLAP_ACT_L        = OFF
-FLAP_ACT_R        = OFF
 RUD_TRIM_RUN      = OFF
 AIL_TRIM_RUN      = OFF
-ELV_TRIM_RUN      = OFF
+
 
 
 # ============================================================
