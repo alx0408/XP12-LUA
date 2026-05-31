@@ -230,6 +230,10 @@ ELV_TRIM_RUN      = DEFAULT;6
 [BE58]
 ICAO = BE58
 
+# ---- ENVIRONMENT -------------------------------------------
+BIRD_ENG1         = OFF
+BIRD_ENG2         = OFF
+
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_1        = OFF
 ENG_FAIL_2        = OFF
@@ -363,6 +367,10 @@ AIL_TRIM_RUN      = OFF
 [C172]
 ICAO = C172
 
+# ---- ENVIRONMENT -------------------------------------------
+BIRD_ENG2         = OFF
+BIRD_RANDOM       = OFF
+
 # ---- ENGINES --------------------------------------
 ENG_FAIL_2        = OFF
 ENG_FIRE_2        = OFF
@@ -392,7 +400,6 @@ INVERTER_2        = OFF
 
 # ---- INSTRUMENTS ---
 
-GLS               = OFF
 RPM_IND_2         = OFF
 MP_IND_1          = OFF
 MP_IND_2          = OFF
@@ -404,20 +411,23 @@ FUEL_P_IND_2      = OFF
 OIL_P_IND_2       = OFF
 OIL_T_IND_2       = OFF
 GEAR_WARN         = OFF
+FUEL_P_IND_1      = OFF
 
 # ---- SYSTEMS  ---------------
 PROP_HEAT_1       = OFF
 PROP_HEAT_2       = OFF
+AOA_HEAT          = OFF
+WINDOW_HEAT       = OFF
 TKS_PUMP          = OFF
 PITOT_HEAT_2      = OFF
 VACUUM_2          = OFF
+HVAC              = OFF
 
 # ---- SENSORS -----------------------------------------------
 PITOT_2           = OFF
 PITOT_STBY        = OFF
 STATIC_2          = OFF
 STATIC_ERR_2      = OFF
-STATIC_STBY       = OFF
 ICE_DETECT        = OFF
 
 # ---- GEAR  -----------------------------------
@@ -432,9 +442,6 @@ RUD_TRIM_RUN      = OFF
 AIL_TRIM_RUN      = OFF
 ELV_TRIM_RUN      = OFF
 
-# ---- ENVIRONMENT  ----------------------------------
-BIRD_ENG2         = OFF
-
 
 # ============================================================
 #  SR22 — Cirrus SR22 G1000
@@ -443,6 +450,9 @@ BIRD_ENG2         = OFF
 [SR22]
 ICAO = SR22
 
+# ---- ENVIRONMENT -------------------------------------------
+BIRD_ENG2         = OFF
+BIRD_RANDOM       = OFF
 
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_2        = OFF
