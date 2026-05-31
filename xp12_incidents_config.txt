@@ -61,6 +61,7 @@ FUEL_FLOW_2       = DEFAULT;1
 OIL_PUMP_1        = DEFAULT;6
 OIL_PUMP_2        = DEFAULT;6
 AIRFLOW_ENG1      = DEFAULT;6
+AIRFLOW_ENG2      = DEFAULT;6
 
 # ---- PROPELLERS --------------------------------------------
 PROP_FINE_1       = DEFAULT;6
@@ -222,7 +223,8 @@ ELV_TRIM_RUN      = DEFAULT;6
 
 # ============================================================
 #  BE58 — SimCoders Baron 58 REP
-#  REP verwaltet Triebwerk/Öl/Prop selbst → diese auf OFF
+#  REP verwaltet Triebwerk/Öl/Prop und einige Instrumwntw selbst 
+#  → diese auf OFF
 # ============================================================
 
 [BE58]
@@ -252,6 +254,7 @@ FUEL_FLOW_2       = OFF
 OIL_PUMP_1        = OFF
 OIL_PUMP_2        = OFF
 AIRFLOW_ENG1      = OFF
+AIRFLOW_ENG2      = OFF
 
 # ---- PROPELLERS --------------------------------------------
 PROP_FINE_1       = OFF
@@ -360,7 +363,7 @@ AIL_TRIM_RUN      = OFF
 [C172]
 ICAO = C172
 
-# ---- ENGINES (SEP) --------------------------------------
+# ---- ENGINES --------------------------------------
 ENG_FAIL_2        = OFF
 ENG_FIRE_2        = OFF
 STARTER_2         = OFF
@@ -453,7 +456,7 @@ OIL_PRESS_LO_2    = OFF
 ELE_FUEL_PMP_2    = OFF
 FUEL_FLOW_2       = OFF
 OIL_PUMP_2        = OFF
-AIRFLOW_ENG1      = OFF
+AIRFLOW_ENG2      = OFF
 
 # ---- PROPELLERS --------------------------------------------
 PROP_SYNC         = OFF

@@ -183,9 +183,10 @@ local MEMORY_PATH    = SCRIPT_DIRECTORY .. "xp12_incidents_memory.txt"
 local memory_enabled = false   -- wird nach Bootstrap aktiviert
 
 -- ---- Startup-Popup -----------------------------------------
-local inc_popup_from  = nil
-local inc_popup_until = nil
-local inc_popup_label = nil   -- optionale Aktionsmeldung (z.B. "PROFILE RESET")
+local inc_popup_from   = nil
+local inc_popup_until  = nil
+local inc_popup_label  = nil
+local inc_popup_armed  = false   -- beim ersten Draw-Frame auf echte Zeit umrechnen
 
 local function inc_trigger_popup(label)
     inc_popup_from  = os.clock()
@@ -342,6 +343,7 @@ def("FUEL_FLOW_2",    "sim/operation/failures/rel_fuelfl1",          "Fuel Flow 
 def("OIL_PUMP_1",     "sim/operation/failures/rel_oilpmp0",          "Oil Pump 1",   nil)
 def("OIL_PUMP_2",     "sim/operation/failures/rel_oilpmp1",          "Oil Pump 2",   nil)
 def("AIRFLOW_ENG1",   "sim/operation/failures/rel_airres0",          "Airflow Eng1", nil)
+def("AIRFLOW_ENG2",   "sim/operation/failures/rel_airres1",          "Airflow Eng2", nil)
 
 -- ---- PROPELLERS --------------------------------------------
 def("PROP_FINE_1",    "sim/operation/failures/rel_prpfin0",          "Prop Fine 1",  nil)
@@ -693,7 +695,13 @@ end
 incidents_show_status = false
 
 function incidents_draw_status()
-    -- Startup-Popup (unabhängig vom Macro-Status)
+    -- Startup-Popup: Timing erst ab erstem Draw-Frame setzen (nicht ab Script-Load)
+    if inc_popup_armed then
+        inc_popup_from  = os.clock() + 5
+        inc_popup_until = os.clock() + 13
+        inc_popup_armed = false
+    end
+
     local now = os.clock()
     if inc_popup_from and inc_popup_until and now >= inc_popup_from and now < inc_popup_until then
         local font   = 18
@@ -718,23 +726,22 @@ function incidents_draw_status()
         graphics.set_color(0, 0, 0, 0.3)
         graphics.draw_rectangle(xpos, ypos, xpos + bw, ypos + bh)
         local ty = ypos + bh - 20
-        if inc_popup_label then
-            graphics.set_color(1, 0.8, 0.2, 1)
-            draw_string_Helvetica_18(xpos + 8, ty, inc_popup_label)
-            ty = ty - 22
-        end
         graphics.set_color(0.4, 0.8, 1, 1)
-        draw_string_Helvetica_18(xpos + 8, ty, "xp12 Incidents")
+        draw_string_Helvetica_18(xpos + 8, ty, "Incident-Tool by ALx")
         ty = ty - 22
         graphics.set_color(1, 1, 1, 1)
         draw_string_Helvetica_18(xpos + 8, ty, "MODE: " .. mode_str .. "  |  " .. cfg.active_name)
+        if inc_popup_label then
+            ty = ty - 22
+            graphics.set_color(1, 0.8, 0.2, 1)
+            draw_string_Helvetica_18(xpos + 8, ty, inc_popup_label)
+        end
     end
 
     if not incidents_show_status then return end
 
-    local x  = 100
-    local sy = SCREEN_HIGHT or SCREEN_HEIGHT or 1080
-    local y  = sy - 60
+    local x   = 20
+    local y   = 40   -- Titel unten links, Failures stapeln sich nach oben
 
     local mode_str
     if system_paused then
@@ -745,21 +752,28 @@ function incidents_draw_status()
         mode_str = tostring(cfg.mode)
     end
 
-    graphics.set_color(1, 1, 1, 1)
-    draw_string_Helvetica_18(x, y, "[xp12 Incidents]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name)
-    y = y - 20
-
+    -- aktive Failures sammeln und nach oben zeichnen
+    local active = {}
     for _, f in ipairs(failures) do
         local v = get_dr(f)
-        if v == 6 then
-            graphics.set_color(1, 0.2, 0.2, 1)
-            draw_string_Helvetica_18(x, y, f.label .. ":   FAIL")
-            y = y - 20
-        elseif v == 1 then
-            graphics.set_color(1, 1, 0, 1)
-            draw_string_Helvetica_18(x, y, f.label .. ":   intermittent")
-            y = y - 20
+        if v == 6 or v == 1 then
+            table.insert(active, { label = f.label, v = v })
         end
+    end
+    local top = y + 20 + #active * 20
+    local cy  = top
+    graphics.set_color(1, 1, 1, 1)
+    draw_string_Helvetica_18(x, cy, "[xp12 Incidents]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name)
+    cy = cy - 20
+    for _, e in ipairs(active) do
+        if e.v == 6 then
+            graphics.set_color(1, 0.2, 0.2, 1)
+            draw_string_Helvetica_18(x, cy, e.label .. ":   FAIL")
+        else
+            graphics.set_color(1, 1, 0, 1)
+            draw_string_Helvetica_18(x, cy, e.label .. ":   intermittent")
+        end
+        cy = cy - 20
     end
 end
 
@@ -854,9 +868,8 @@ if type(cfg.mode) == "number" then
     schedule_random()
 end
 
--- Startup-Popup: 5s verzögert anzeigen, 8s lang
-inc_popup_from  = os.clock() + 5
-inc_popup_until = os.clock() + 13
+-- Startup-Popup: Timing ab erstem Draw-Frame (nicht ab Script-Load)
+inc_popup_armed = true
 
 -- ICAO merken damit incidents_aircraft_check() nicht sofort neu aufbaut
 last_icao = ((dr_acf_icao or ""):match("^([^%z]*)") or ""):upper():match("^%s*(.-)%s*$")
