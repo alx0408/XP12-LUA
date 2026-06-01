@@ -44,36 +44,34 @@ ENG_FAIL_2        = 500# bei single engine am besten OFF
 ENG_FIRE_1        = 2000
 ENG_FIRE_2        = 2000# bei single engine am besten OFF
 STARTER_1         = DEFAULT
-STARTER_2         = DEFAULT# bei single engine am besten OFF
+STARTER_2         = DEFAULT	# bei single engine am besten OFF
 MAG_L1            = DEFAULT
-MAG_L2            = DEFAULT# bei single engine am besten OFF
+MAG_L2            = DEFAULT	# bei single engine am besten OFF
 MAG_R1            = DEFAULT
-MAG_R2            = DEFAULT# bei single engine am besten OFF
-FUEL_PUMP_LO_1    = DEFAULT# wahrscheinlich: Pumpe läuft, erzeugt aber nur geringen Druck
-FUEL_PUMP_LO_2    = DEFAULT# bei single engine am besten OFF
-FUEL_PUMP_1       = DEFAULT# Mechanische Kraftstoffpumpe
-FUEL_PUMP_2       = DEFAULT# bei single engine am besten OFF
+MAG_R2            = DEFAULT	# bei single engine am besten OFF
+FUEL_PUMP_LO_1    = DEFAULT	# wahrscheinlich: Pumpe läuft, erzeugt aber nur geringen Druck
+FUEL_PUMP_LO_2    = DEFAULT	# bei single engine am besten OFF
+FUEL_PUMP_1       = DEFAULT	# Mechanische Kraftstoffpumpe
+FUEL_PUMP_2       = DEFAULT	# bei single engine am besten OFF
 ELE_FUEL_PMP_1    = DEFAULT
-ELE_FUEL_PMP_2    = DEFAULT# bei single engine am besten OFF
-FUEL_FLOW_1       = DEFAULT# Vermutung: Schwankungen Treibstoffzufuhr
-FUEL_FLOW_2       = DEFAULT# bei single engine am besten OFF
-FUEL_BLOCK_1      = DEFAULT# Vermutung: Kraftstofffilter blocked / warum steht das in XP unter Welt?
+ELE_FUEL_PMP_2    = DEFAULT	# bei single engine am besten OFF
+FUEL_FLOW_1       = DEFAULT	# Vermutung: Schwankungen Treibstoffzufuhr
+FUEL_FLOW_2       = DEFAULT	# bei single engine am besten OFF
+FUEL_BLOCK_1      = DEFAULT	# Vermutung: Kraftstofffilter blocked / warum steht das in XP unter Welt?
 FUEL_BLOCK_2      = DEFAULT
 OIL_PUMP_1        = DEFAULT
-OIL_PUMP_2        = DEFAULT# bei single engine am besten OFF
+OIL_PUMP_2        = DEFAULT	# bei single engine am besten OFF
 OIL_PRESS_LO_1    = DEFAULT
-OIL_PRESS_LO_2    = DEFAULT# bei single engine am besten OFF
+OIL_PRESS_LO_2    = DEFAULT	# bei single engine am besten OFF
 AIRFLOW_ENG1      = DEFAULT
-AIRFLOW_ENG2      = DEFAULT# bei single engine am besten OFF
+AIRFLOW_ENG2      = DEFAULT	# bei single engine am besten OFF
 
 # ---- PROPELLERS (nur constant speed prop) -------------------------
 PROP_FINE_1       = DEFAULT
-PROP_FINE_2       = DEFAULT# bei single engine am besten OFF
+PROP_FINE_2       = DEFAULT	# bei single engine am besten OFF
 PROP_COARSE_1     = DEFAULT
-PROP_COARSE_2     = DEFAULT# bei single engine am besten OFF
-PROP_SYNC         = DEFAULT# bei single engine am besten OFF
-
-# ---- FUEL --------------------------------------------------
+PROP_COARSE_2     = DEFAULT	# bei single engine am besten OFF
+PROP_SYNC         = DEFAULT	# bei single engine am besten OFF
 
 
 # ---- ELECTRICAL --------------------------------------------
@@ -137,9 +135,9 @@ ALT_COPILOT       = DEFAULT
 G_ASI             = DEFAULT
 G_ALT             = DEFAULT
 G_VVI             = DEFAULT
-G430_GPS1         = DEFAULT#nur  Ausfall des GPS-Empfangs ?
+G430_GPS1         = DEFAULT	#nur  Ausfall des GPS-Empfangs ?
 G430_GPS2         = DEFAULT
-G430_NAV1         = DEFAULT#Ausfall des Garmin = Ausfall COM und NAV
+G430_NAV1         = DEFAULT	#Ausfall des Garmin = Ausfall COM und NAV
 G430_NAV2         = DEFAULT
 G_PFD             = DEFAULT
 G_MFD             = DEFAULT
@@ -149,17 +147,17 @@ G_GIA2            = DEFAULT
 G_GEA             = DEFAULT
 MAGNETOMETER      = DEFAULT
 				#prüfen, ob bei G1000 ADC und/oder AHRS ausfallen können (oder ist das nur für Airliner)
-NAVCOM1           = DEFAULT#redundant mit Ausfall des Garmin (s.o.), dann OFF
+NAVCOM1           = DEFAULT	#redundant mit Ausfall des Garmin (s.o.), dann OFF
 NAVCOM2           = DEFAULT
-NAV1              = DEFAULT#redundant mit Ausfall des Garmin (s.o.), dann OFF
+NAV1              = DEFAULT	#redundant mit Ausfall des Garmin (s.o.), dann OFF
 NAV2              = DEFAULT
-COM1              = DEFAULT#redundant mit Ausfall des Garmin (s.o.), dann OFF
+COM1              = DEFAULT	#redundant mit Ausfall des Garmin (s.o.), dann OFF
 COM2              = DEFAULT
 ADF1              = DEFAULT
 GPS               = DEFAULT
 DME               = DEFAULT
 LOC               = DEFAULT
-GLS               = DEFAULT#meint: Glideslope, nicht GLS-System
+GLS               = DEFAULT	#meint: Glideslope, nicht GLS-System
 XPNDR             = DEFAULT
 MARKER            = DEFAULT
 RPM_IND_1         = DEFAULT
@@ -192,7 +190,7 @@ STATIC_ERR_2      = DEFAULT
 STATIC_STBY       = DEFAULT
 OAT               = DEFAULT
 ICE_DETECT        = DEFAULT
-FUEL_QTY          = DEFAULT#deutscher Text: Treibstoffgütesensor; richtig: Quantity
+FUEL_QTY          = DEFAULT	#deutscher Text: Treibstoffgütesensor; richtig: Quantity
 
 # ---- GEAR --------------------------------------------------
 GEAR_ACT          = DEFAULT
@@ -213,8 +211,8 @@ BRAKES_R          = DEFAULT
 
 # ---- CONTROLS ----------------------------------------------
 FLAP_ACT          = DEFAULT
-FLAP_ACT_L        = DEFAULT#meint: Flaps links verriegeln!
-FLAP_ACT_R        = DEFAULT#meint: Flaps links verriegeln!
+FLAP_ACT_L        = DEFAULT	#meint: Flaps links verriegeln!
+FLAP_ACT_R        = DEFAULT	#meint: Flaps links verriegeln!
 RUD_TRIM_RUN      = DEFAULT
 AIL_TRIM_RUN      = DEFAULT
 ELV_TRIM_RUN      = DEFAULT
@@ -338,7 +336,6 @@ AIRFLOW_ENG2      = OFF
 # ---- PROPELLERS --------------------------------------------
 PROP_SYNC         = OFF
 
-# ---- FUEL --------------------------------------------------
 
 # ---- ELECTRICAL --------------------------------------------
 ELEC_BUS2         = OFF
