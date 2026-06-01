@@ -62,18 +62,17 @@ local cfg = {
 local CONFIG_PATH = SCRIPT_DIRECTORY .. "xp12_incidents_config.txt"
 
 local function parse_failure_entry(val_str)
-    local main, fval_s = val_str:match("^%s*([^;%s]+)%s*;?%s*(%d*)%s*$")
-    if not main then return "DEFAULT", 6 end
-    local fval = tonumber(fval_s) or 6
+    local main = val_str:match("^%s*([^;%s]+)")
+    if not main then return "DEFAULT" end
     local mtbf
     if     main == "OFF"     then mtbf = "OFF"
     elseif main == "ON"      then mtbf = "ON"
     elseif main == "DEFAULT" then mtbf = "DEFAULT"
     else
         local n = tonumber(main)
-        mtbf = (n and n > 0) and n or "DEFAULT"  -- 0 und negativ → DEFAULT
+        mtbf = (n and n > 0) and n or "DEFAULT"
     end
-    return mtbf, fval
+    return mtbf
 end
 
 local function load_config()
@@ -121,8 +120,8 @@ local function load_config()
                                 table.insert(cfg.profiles[section].icao, icao:upper())
                             end
                         else
-                            local mtbf, fval = parse_failure_entry(val)
-                            cfg.profiles[section].failures[key] = { mtbf = mtbf, fval = fval }
+                            local mtbf = parse_failure_entry(val)
+                            cfg.profiles[section].failures[key] = { mtbf = mtbf }
                         end
                     end
                 end
@@ -266,7 +265,7 @@ local function load_memory()
                     key = key:upper()
                     local value = tonumber(val)
                     for _, f in ipairs(failures) do
-                        if f.key == key and not f.no_memory and (value == 1 or value == 6) then
+                        if f.key == key and not f.no_memory and value == 6 then
                             local _, flag = get_mtbf(f)
                             if flag ~= "OFF" then set_dr(f, value) end
                             break
@@ -538,19 +537,9 @@ get_mtbf = function(f)
     return fc.mtbf, nil
 end
 
-local function get_fval(f)
-    local fc = cfg.active_failures[f.key]
-    return fc and (fc.fval or 6) or 6
-end
-
 -- ---- Failure auslösen / zurücksetzen -----------------------
 local function trigger_failure(f)
-    local fval = get_fval(f)
-    if fval == 1 then
-        set_dr(f, math.random(2) == 1 and 1 or 6)
-    else
-        set_dr(f, 6)
-    end
+    set_dr(f, 6)
     save_memory()
 end
 
@@ -781,9 +770,8 @@ function incidents_draw_status()
     -- aktive Failures sammeln und nach oben zeichnen
     local active = {}
     for _, f in ipairs(failures) do
-        local v = get_dr(f)
-        if v == 6 or v == 1 then
-            table.insert(active, { label = f.label, v = v })
+        if get_dr(f) == 6 then
+            table.insert(active, f.label)
         end
     end
     local top = y + 20 + #active * 20
@@ -791,14 +779,9 @@ function incidents_draw_status()
     graphics.set_color(1, 1, 1, 1)
     draw_string_Helvetica_18(x, cy, "[xp12 Incidents]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name)
     cy = cy - 20
-    for _, e in ipairs(active) do
-        if e.v == 6 then
-            graphics.set_color(1, 0.2, 0.2, 1)
-            draw_string_Helvetica_18(x, cy, e.label .. ":   FAIL")
-        else
-            graphics.set_color(1, 1, 0, 1)
-            draw_string_Helvetica_18(x, cy, e.label .. ":   intermittent")
-        end
+    for _, label in ipairs(active) do
+        graphics.set_color(1, 0.2, 0.2, 1)
+        draw_string_Helvetica_18(x, cy, label .. ":   FAIL")
         cy = cy - 20
     end
 end

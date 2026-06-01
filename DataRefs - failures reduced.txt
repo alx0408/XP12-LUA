@@ -1,4 +1,4 @@
-1. CONSIDERED
+1. AKTUELLES SET
 
 ENVIRONMENT
 sim/operation/failures/rel_vasi		int	y	failure_enum	VASIs Inoperative
@@ -34,6 +34,7 @@ sim/operation/failures/rel_fuelfl1	int	y	failure_enum	Fuel Flow Fluctuation - en
 sim/operation/failures/rel_oilpmp0	int	y	failure_enum	Oil Pump - engine 1	
 sim/operation/failures/rel_oilpmp1	int	y	failure_enum	Oil Pump - engine 2
 sim/operation/failures/rel_airres0	int	y	failure_enum	Airflow restricted - Engine 1	
+sim/operation/failures/rel_airres1	int	y	failure_enum	Airflow restricted - Engine 2
 
 PROPELLERS
 sim/operation/failures/rel_prpfin0	int	y	failure_enum	Prop governor fail to fine - engine 1	
@@ -205,12 +206,12 @@ sim/operation/failures/rel_elv_trim_run	int	y	failure_enum	Elevator Trim Runaway
 2. NOPE, erstmal nicht
 
 
-sim/operation/failures/rel_airres1	int	y	failure_enum	Airflow restricted - Engine 2
-sim/operation/failures/rel_chipde0	int	y	failure_enum	Chip Detected - engine 1
+ENGINE
+sim/operation/failures/rel_chipde0	int	y	failure_enum	Chip Detected - engine 1 - Metallspäne 
 sim/operation/failures/rel_chipde1	int	y	failure_enum	Chip Detected - engine 2
-sim/operation/failures/rel_seize_0	int	y	failure_enum	Engine Seize - engine 1
+sim/operation/failures/rel_seize_0	int	y	failure_enum	Engine Seize - engine 1 - Triebwerk blockiert
 sim/operation/failures/rel_seize_1	int	y	failure_enum	Engine Seize - engine 2
-sim/operation/failures/rel_govnr_0	int	y	failure_enum	Governor throttle fail - engine 1
+sim/operation/failures/rel_govnr_0	int	y	failure_enum	Governor throttle fail - engine 1 - Propdrehzahl defekt?
 sim/operation/failures/rel_govnr_1	int	y	failure_enum	Governor throttle fail - engine 2
 
 
