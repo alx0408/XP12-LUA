@@ -6,9 +6,13 @@ sim/operation/failures/rel_rwy_lites	int	y	failure_enum	Runway lights Inoperativ
 sim/operation/failures/rel_bird_strike_eng1	int	y	failure_enum	Bird has hit the plane - fail engine 1
 sim/operation/failures/rel_bird_strike_eng2	int	y	failure_enum	Bird has hit the plane - fail engine 2
 sim/operation/failures/rel_bird_strike		int	y	failure_enum	Bird has hit the plane - fail random systems
-
-GENERAL
 sim/operation/failures/rel_door_open	int	y	failure_enum	Door Open
+sim/operation/failures/rel_fuelcap	int	y	failure_enum	Fuel Cap left off	
+sim/operation/failures/rel_fuel_leak	int	y	failure_enum	Fuel leak (slow leak of fuel not seen by the fuel totalizer)	
+sim/operation/failures/rel_fuel_water	int	y	failure_enum	Water in fuel	
+sim/operation/failures/rel_fuel_type	int	y	failure_enum	Wrong fuel type - JetA for props or Avgas for jets!	
+sim/operation/failures/rel_smoke_cpit	int	y	failure_enum	Smoke in cockpit
+
 
 ENGINES
 sim/operation/failures/rel_engfai0	int	y	failure_enum	Engine Failure - engine 1 loss of power without smoke	
@@ -31,33 +35,24 @@ sim/operation/failures/rel_ele_fuepmp0	int	y	failure_enum	Fuel Pump - engine 1 (
 sim/operation/failures/rel_ele_fuepmp1	int	y	failure_enum	Fuel Pump - engine 2 (electric driven)	
 sim/operation/failures/rel_fuelfl0	int	y	failure_enum	Fuel Flow Fluctuation - engine 1	
 sim/operation/failures/rel_fuelfl1	int	y	failure_enum	Fuel Flow Fluctuation - engine 2
+sim/operation/failures/rel_fuel_block0	int	y	failure_enum	Fuel tank filter is blocked - tank 1	
+sim/operation/failures/rel_fuel_block1	int	y	failure_enum	Fuel tank filter is blocked - tank 2
 sim/operation/failures/rel_oilpmp0	int	y	failure_enum	Oil Pump - engine 1	
 sim/operation/failures/rel_oilpmp1	int	y	failure_enum	Oil Pump - engine 2
 sim/operation/failures/rel_airres0	int	y	failure_enum	Airflow restricted - Engine 1	
 sim/operation/failures/rel_airres1	int	y	failure_enum	Airflow restricted - Engine 2
+
 
 PROPELLERS
 sim/operation/failures/rel_prpfin0	int	y	failure_enum	Prop governor fail to fine - engine 1	
 sim/operation/failures/rel_prpfin1	int	y	failure_enum	Prop governor fail to fine - engine 2
 sim/operation/failures/rel_prpcrs0	int	y	failure_enum	Prop governor fail to coarse - engine 1	
 sim/operation/failures/rel_prpcrs1	int	y	failure_enum	Prop governor fail to coarse - engine 2	
-sim/operation/failures/rel_prop_sync	int	y	failure_enum	Prop sync
 
-
-FUEL
-sim/operation/failures/rel_fuelcap	int	y	failure_enum	Fuel Cap left off	
-sim/operation/failures/rel_fuel_leak	int	y	failure_enum	Fuel leak (slow leak of fuel not seen by the fuel totalizer)	
-sim/operation/failures/rel_fuel_water	int	y	failure_enum	Water in fuel	
-sim/operation/failures/rel_fuel_type	int	y	failure_enum	Wrong fuel type - JetA for props or Avgas for jets!	
-sim/operation/failures/rel_fuel_block0	int	y	failure_enum	Fuel tank filter is blocked - tank 1	
-sim/operation/failures/rel_fuel_block1	int	y	failure_enum	Fuel tank filter is blocked - tank 2
 
 ELECTRICAL
-sim/operation/failures/rel_smoke_cpit	int	y	failure_enum	Smoke in cockpit
 sim/operation/failures/rel_esys		int	y	failure_enum	Electrical System (Bus 1)	
 sim/operation/failures/rel_esys2	int	y	failure_enum	Electrical System (Bus 2)
-sim/operation/failures/rel_invert0	int	y	failure_enum	Inverter 1	
-sim/operation/failures/rel_invert1	int	y	failure_enum	Inverter 2 (also in 740)	
 sim/operation/failures/rel_genera0	int	y	failure_enum	Generator - engine 1	
 sim/operation/failures/rel_genera1	int	y	failure_enum	Generator - engine 2	
 sim/operation/failures/rel_batter0	int	y	failure_enum	Battery 1	
@@ -70,7 +65,6 @@ sim/operation/failures/rel_bat0_lo	int	y	failure_enum	Battery 0 voltage low
 sim/operation/failures/rel_bat0_hi	int	y	failure_enum	Battery 0 voltage hi	
 sim/operation/failures/rel_bat1_lo	int	y	failure_enum	Battery 1 voltage low	
 sim/operation/failures/rel_bat1_hi	int	y	failure_enum	Battery 1 voltage hi
-sim/operation/failures/rel_avionics_fan	int	y	failure_enum	Avionics fan (equipment cooling) failure
 
 
 LIGHTS
@@ -82,6 +76,7 @@ sim/operation/failures/rel_lites_land	int	y	failure_enum	Landing Lights
 sim/operation/failures/rel_lites_ins	int	y	failure_enum	Instrument Lighting	
 sim/operation/failures/rel_clights	int	y	failure_enum	Cockpit Lights	
 
+
 AUTOPILOT
 sim/operation/failures/rel_otto		int	y	failure_enum	AutoPilot (Computer)	
 sim/operation/failures/rel_auto_runaway	int	y	failure_enum	AutoPilot (Runaway!!!)
@@ -89,6 +84,7 @@ sim/operation/failures/rel_auto_servos	int	y	failure_enum	AutoPilot (Servos)
 sim/operation/failures/rel_servo_rudd	int	y	failure_enum	autopilot servos failed - rudder/yaw damper
 sim/operation/failures/rel_servo_ailn	int	y	failure_enum	autopilot servos failed - ailerons	
 sim/operation/failures/rel_servo_elev	int	y	failure_enum	autopilot servos failed - elevators	
+
 
 SYSTEMS
 sim/operation/failures/rel_ice_pitot_heat1	int	y	failure_enum	Pitot heat 1	
@@ -98,9 +94,9 @@ sim/operation/failures/rel_ice_window_heat	int	y	failure_enum	Window Heat
 sim/operation/failures/rel_ice_prop_heat	int	y	failure_enum	Prop Heat, engine 1	
 sim/operation/failures/rel_ice_prop_heat2	int	y	failure_enum	Prop Heat, engine 2		
 sim/operation/failures/rel_dice_tks_pump_0	int	y	failure_enum	TKS fluid pump 1	
+sim/operation/failures/rel_HVAC			int	y	failure_enum	air conditioning failed	
 sim/operation/failures/rel_vacuum		int	y	failure_enum	Vacuum System 1 - Pump Failure	
 sim/operation/failures/rel_vacuum2		int	y	failure_enum	Vacuum System 2 - Pump Failure	
-sim/operation/failures/rel_HVAC			int	y	failure_enum	air conditioning failed	
 
 
 INSTRUMENTS
@@ -112,14 +108,15 @@ sim/operation/failures/rel_ss_dgy	int	y	failure_enum	Directional Gyro (Pilot)
 sim/operation/failures/rel_ss_vvi	int	y	failure_enum	Vertical Velocity Indicator (Pilot)
 sim/operation/failures/rel_cop_ahz	int	y	failure_enum	Artificial Horizon (Copilot)	
 sim/operation/failures/rel_cop_alt	int	y	failure_enum	Altimeter (Copilot)
-sim/operation/failures/rel_g_asi	int	y	failure_enum	airspeed - glass cockpit
-sim/operation/failures/rel_g_alt	int	y	failure_enum	altimeter - glass cockpit
-sim/operation/failures/rel_g_vvi	int	y	failure_enum	vvi - glass cockpit
 
 sim/operation/failures/rel_g430_gps1	int	y	failure_enum	G430 GPS 1 Inop	
 sim/operation/failures/rel_g430_gps2	int	y	failure_enum	G430 GPS 2 Inop	
 sim/operation/failures/rel_g430_rad1_tune	int	y	failure_enum	G430 Nav/Com Tuner 1 Inop	
 sim/operation/failures/rel_g430_rad2_tune	int	y	failure_enum	G430 Nav/Com Tuner 2 Inop
+
+sim/operation/failures/rel_g_asi	int	y	failure_enum	airspeed - glass cockpit
+sim/operation/failures/rel_g_alt	int	y	failure_enum	altimeter - glass cockpit
+sim/operation/failures/rel_g_vvi	int	y	failure_enum	vvi - glass cockpit
 sim/operation/failures/rel_g_pfd	int	y	failure_enum	PFD screen failure
 sim/operation/failures/rel_g_mfd	int	y	failure_enum	MFD screen failure
 sim/operation/failures/rel_wxr_radar	int	y	failure_enum	onboard weather radar
@@ -134,6 +131,7 @@ sim/operation/failures/rel_nav1		int	y	failure_enum	Nav-1 radio
 sim/operation/failures/rel_nav2		int	y	failure_enum	Nav-2 radio	
 sim/operation/failures/rel_com1		int	y	failure_enum	Com-1 radio	
 sim/operation/failures/rel_com2		int	y	failure_enum	Com-2 radio	
+
 sim/operation/failures/rel_adf1		int	y	failure_enum	ADF 1 (only one ADF failure in 830!)	
 sim/operation/failures/rel_gps		int	y	failure_enum	GPS	
 sim/operation/failures/rel_dme		int	y	failure_enum	DME	
@@ -161,6 +159,7 @@ sim/operation/failures/rel_oilt_ind_1	int	y	failure_enum	Panel Indicator Inop - 
 
 sim/operation/failures/rel_stall_warn	int	y	failure_enum	Stall warning has failed	
 sim/operation/failures/rel_gear_warning	int	y	failure_enum	gear warning audio is broken	
+sim/operation/failures/rel_prop_sync	int	y	failure_enum	Prop sync - INSTRUMENT!
 
 SENSORS
 sim/operation/failures/rel_pitot	int	y	failure_enum	Pitot 1 - Blockage	
@@ -176,8 +175,8 @@ sim/operation/failures/rel_ice_detect	int	y	failure_enum	Ice detector
 sim/operation/failures/rel_g_fuel	int	y	failure_enum	fuel quantity sensor
 
 GEAR
-sim/operation/failures/rel_gear_act	int	y	failure_enum	Landing Gear actuator	
 sim/operation/failures/rel_gear_ind	int	y	failure_enum	Landing Gear indicator		
+sim/operation/failures/rel_gear_act	int	y	failure_enum	Landing Gear actuator	
 sim/operation/failures/rel_lagear1	int	y	failure_enum	Landing Gear 1 retract	
 sim/operation/failures/rel_lagear2	int	y	failure_enum	Landing Gear 2 retract	
 sim/operation/failures/rel_lagear3	int	y	failure_enum	Landing Gear 3 retract	
@@ -201,9 +200,6 @@ sim/operation/failures/rel_ail_trim_run	int	y	failure_enum	Pitch Trim Runaway
 sim/operation/failures/rel_elv_trim_run	int	y	failure_enum	Elevator Trim Runaway
 
 
-
-
-
 2. NOPE, erstmal nicht
 
 
@@ -215,13 +211,30 @@ sim/operation/failures/rel_seize_1	int	y	failure_enum	Engine Seize - engine 2
 sim/operation/failures/rel_govnr_0	int	y	failure_enum	Governor throttle fail - engine 1 - Propdrehzahl defekt?
 sim/operation/failures/rel_govnr_1	int	y	failure_enum	Governor throttle fail - engine 2
 
+sim/operation/failures/rel_adc_comp	int	y	failure_enum	air data computer	
+sim/operation/failures/rel_adc_comp_2	int	y	failure_enum	air data computer 2	
+sim/operation/failures/rel_g_arthorz	int	y	failure_enum	AHRS	
+sim/operation/failures/rel_g_arthorz_2	int	y	failure_enum	AHRS 2
+
+sim/operation/failures/rel_trim_rud	int	y	failure_enum	Yaw Trim
+sim/operation/failures/rel_trim_ail	int	y	failure_enum	Roll trim
+sim/operation/failures/rel_trim_elv	int	y	failure_enum	Pitch Trim
+
+sim/operation/failures/rel_depres_slow		int	y	failure_enum	Slow cabin leak - descend or black out	
+sim/operation/failures/rel_depres_fast		int	y	failure_enum	catastrophic decompression - yer dead	
+
+NOT IN XP-FAILURE SYSTEM (?)
+sim/operation/failures/rel_avionics_fan	int	y	failure_enum	Avionics fan (equipment cooling) failure
 
 
-4. TURBINEN
+3. NUR TURBINEN
+
 sim/operation/failures/rel_engfla0	int	y	failure_enum	Engine Failure - engine 1 Flameout	
 sim/operation/failures/rel_engfla1	int	y	failure_enum	Engine Failure - engine 2 Flameout
 sim/operation/failures/rel_ignitr0	int	y	failure_enum	Ignitor - engine 1	
 sim/operation/failures/rel_ignitr1	int	y	failure_enum	Ignitor - engine 2
+sim/operation/failures/rel_invert0	int	y	failure_enum	Inverter 1	
+sim/operation/failures/rel_invert1	int	y	failure_enum	Inverter 2 (also in 740)	
 sim/operation/failures/rel_fadec_0	int	y	failure_enum	Fadec - engine 1	
 sim/operation/failures/rel_fadec_1	int	y	failure_enum	Fadec - engine 2
 sim/operation/failures/rel_comsta0	int	y	failure_enum	Engine Compressor Stall - engine 1	
@@ -238,9 +251,13 @@ sim/operation/failures/rel_EPRind1	int	y	failure_enum	Panel Indicator Inop - epr
 sim/operation/failures/rel_ITTind0	int	y	failure_enum	Panel Indicator Inop - itt engine 1	
 sim/operation/failures/rel_ITTind1	int	y	failure_enum	Panel Indicator Inop - itt engine 2
 
+sim/operation/failures/rel_govnr_0	int	y	failure_enum	Governor throttle fail - engine 1	
+sim/operation/failures/rel_govnr_1	int	y	failure_enum	Governor throttle fail - engine 2
 
 
-5. ADVANCED SYSTEMS
+
+4. ADVANCED AIRCRAFT
+
 sim/operation/failures/rel_ice_brake_heat	int	y	failure_enum	Brakes anti-ice	
 sim/operation/failures/rel_ice_inlet_heat	int	y	failure_enum	Inlet heat, engine 1	
 sim/operation/failures/rel_ice_inlet_heat2	int	y	failure_enum	Inlet heat, engine 2
@@ -269,16 +286,18 @@ sim/operation/failures/rel_vacuum_stby		int	y	failure_enum	Vacuum System - elect
 sim/operation/failures/rel_efis_1	int	y	failure_enum	Primary EFIS	
 sim/operation/failures/rel_efis_2	int	y	failure_enum	Secondary EFIS
 sim/operation/failures/rel_g_pfd2	int	y	failure_enum	PFD2 screen failure
-
-sim/operation/failures/rel_adf2		int	y	failure_enum	ADF 2	
 sim/operation/failures/rel_gps2		int	y	failure_enum	GPS
+sim/operation/failures/rel_gp		int	y	failure_enum	WAAS GPS receiver
+sim/operation/failures/rel_lrn1		int	y	failure_enum	long-range navigation pilot (any R-NAV system including IRS, Omega, Loran,...)	
+sim/operation/failures/rel_lrn2		int	y	failure_enum	long-range navigation copilot (any R-NAV system including IRS, Omega, Loran,...)
+
 
 sim/operation/failures/rel_cop_asi	int	y	failure_enum	Airspeed Indicator (Copilot)	
 sim/operation/failures/rel_cop_tsi	int	y	failure_enum	Turn indicator (Copilot)	
 sim/operation/failures/rel_cop_dgy	int	y	failure_enum	Directional Gyro (Copilot)	
 sim/operation/failures/rel_cop_vvi	int	y	failure_enum	Vertical Velocity Indicator (Copilot)
-sim/operation/failures/rel_gp		int	y	failure_enum	WAAS GPS receiver
 
+sim/operation/failures/rel_adf2		int	y	failure_enum	ADF 2	
 sim/operation/failures/rel_AOA		int	y	failure_enum	AOA sensor pilot	
 sim/operation/failures/rel_stby_AOA	int	y	failure_enum	AOA sensor stby	
 sim/operation/failures/rel_pil_radalt	int	y	failure_enum	rel_pil_radalt	
@@ -287,16 +306,51 @@ sim/operation/failures/rel_cop_radalt	int	y	failure_enum	rel_cop_radalt
 sim/operation/failures/rel_fc_L_flp2	int	y	failure_enum	Left flap 2 actuator	
 sim/operation/failures/rel_fc_R_flp2	int	y	failure_enum	Right dlap 2 actuator
 
-
 sim/operation/failures/rel_throt_lo	int	y	failure_enum	Throttle inop giving min thrust	
 sim/operation/failures/rel_throt_hi	int	y	failure_enum	Throttle inop giving max thrust	
 sim/operation/failures/rel_fc_thr	int	y	failure_enum	Throttle failure at current position
 
 sim/operation/failures/rel_static_stby_err	int	y	failure_enum	Static system stby - Error
 
-
-6. AIRLINERS; HELI; MILITARY; MORE THEN 2 ENGINES - AUSGESCHLOSSEN!
+sim/operation/failures/rel_lites_hud	int	y	failure_enum	HUD lights
+sim/operation/failures/rel_stbaug	int	y	failure_enum	Stability Augmentation
+sim/operation/failures/rel_fc_slt	int	y	failure_enum	Slats	
 sim/operation/failures/ram_air_turbine_on	int	y	boolean	Ram air turbine is on? (supplies hydraulic pressure in case of total hydraulic pump failure)
+
+sim/operation/failures/rel_hydpmp_ele		int	y	failure_enum	Hydraulic pump (electric)	
+sim/operation/failures/rel_hydpmp_el2		int	y	failure_enum	#2 Electric hydraulic pump	
+sim/operation/failures/rel_hydpmp_el3		int	y	failure_enum	#3 Electric hydraulic pump	
+sim/operation/failures/rel_hydptu		int	y	failure_enum	Hydraulic pressure transfer unit	
+sim/operation/failures/rel_hydpmp		int	y	failure_enum	Hydraulic System 1 (pump fail)	
+sim/operation/failures/rel_hydpmp2		int	y	failure_enum	Hydraulic System 2 (pump fail)	
+sim/operation/failures/rel_hydleak		int	y	failure_enum	Hydraulic System 1 (leak)	
+sim/operation/failures/rel_hydleak2		int	y	failure_enum	Hydraulic System 2 (leak)	
+sim/operation/failures/rel_hydleak3		int	y	failure_enum	Hydraulic System 3 (leak)	
+sim/operation/failures/rel_hydoverp		int	y	failure_enum	Hydraulic System 1 (over pressure)	
+sim/operation/failures/rel_hydoverp2		int	y	failure_enum	Hydraulic System 2 (over pressure)	
+sim/operation/failures/rel_hydoverp3		int	y	failure_enum	Hydraulic System 3 (over pressure)
+sim/operation/failures/rel_apu		int	y	failure_enum	APU failure to start or run	
+sim/operation/failures/rel_apu_fire	int	y	failure_enum	APU catastrophic failure with fire
+sim/operation/failures/rel_revers0	int	y	failure_enum	Thrust Reversers Inop - engine 1	
+sim/operation/failures/rel_revers1	int	y	failure_enum	Thrust Reversers Inop - engine 2	
+sim/operation/failures/rel_revdep0	int	y	failure_enum	Thrust Reversers Deploy - engine 1	
+sim/operation/failures/rel_revdep1	int	y	failure_enum	Thrust Reversers Deploy - engine 2
+sim/operation/failures/rel_revloc0	int	y	failure_enum	Thrust Reversers Locked - engine 1	
+sim/operation/failures/rel_revloc1	int	y	failure_enum	Thrust Reversers Locked - engine 2
+sim/operation/failures/rel_airbus_alternate	int	y	failure_enum	rel_airbus_alternate	
+sim/operation/failures/rel_airbus_alternate2	int	y	failure_enum	rel_airbus_alternate2	
+sim/operation/failures/rel_airbus_direct	int	y	failure_enum	rel_airbus_direct	
+sim/operation/failures/rel_autoslats	int	y	failure_enum	rel_autoslats
+sim/operation/failures/rel_servo_thro	int	y	failure_enum	autopilot servos failed - throttles
+sim/operation/failures/rel_bleed_air_lft	int	y	failure_enum	The left engine is not providing enough pressure	
+sim/operation/failures/rel_bleed_air_rgt	int	y	failure_enum	The right engine is not providing enough pressure	
+sim/operation/failures/rel_APU_press		int	y	failure_enum	APU is not providing bleed air for engine start or pressurization	
+
+sim/operation/failures/rel_tat_2	int	y	failure_enum	TAT probe, copilot	
+sim/operation/failures/rel_tat_stby	int	y	failure_enum	TAT probe, stby	
+
+5. HELI; MILITARY; MORE THEN 2 ENGINES - AUSGESCHLOSSEN!
+
 sim/operation/failures/rel_fuel_block2	int	y	failure_enum	Fuel tank filter is blocked - tank 3	
 sim/operation/failures/rel_fuel_block3	int	y	failure_enum	Fuel tank filter is blocked - tank 4	
 sim/operation/failures/rel_fuel_block4	int	y	failure_enum	Fuel tank filter is blocked - tank 5	
@@ -320,9 +374,6 @@ sim/operation/failures/rel_batter4	int	y	failure_enum	Battery 5
 sim/operation/failures/rel_batter5	int	y	failure_enum	Battery 6	
 sim/operation/failures/rel_batter6	int	y	failure_enum	Battery 7	
 sim/operation/failures/rel_batter7	int	y	failure_enum	Battery 8		
-sim/operation/failures/rel_lites_hud	int	y	failure_enum	HUD lights
-sim/operation/failures/rel_stbaug	int	y	failure_enum	Stability Augmentation
-sim/operation/failures/rel_fc_slt	int	y	failure_enum	Slats	
 sim/operation/failures/rel_lagear4	int	y	failure_enum	Landing Gear 4 retract	
 sim/operation/failures/rel_lagear5	int	y	failure_enum	Landing Gear 5 retract
 sim/operation/failures/rel_collapse4	int	y	failure_enum	Landing gear 4 gear collapse	
@@ -348,36 +399,16 @@ sim/operation/failures/rel_stat_B4	int	y	failure_enum	VTOL/drone lower motor 4
 sim/operation/failures/rel_stat_B5	int	y	failure_enum	VTOL/drone lower motor 5	
 sim/operation/failures/rel_stat_B6	int	y	failure_enum	VTOL/drone lower motor 6	
 sim/operation/failures/rel_stat_B7	int	y	failure_enum	VTOL/drone lower motor 7
-sim/operation/failures/rel_hydpmp_ele		int	y	failure_enum	Hydraulic pump (electric)	
-sim/operation/failures/rel_hydpmp_el2		int	y	failure_enum	#2 Electric hydraulic pump	
-sim/operation/failures/rel_hydpmp_el3		int	y	failure_enum	#3 Electric hydraulic pump	
-sim/operation/failures/rel_hydptu		int	y	failure_enum	Hydraulic pressure transfer unit	
-sim/operation/failures/rel_hydpmp		int	y	failure_enum	Hydraulic System 1 (pump fail)	
-sim/operation/failures/rel_hydpmp2		int	y	failure_enum	Hydraulic System 2 (pump fail)	
 sim/operation/failures/rel_hydpmp3		int	y	failure_enum	Hydraulic System 3 (pump fail)	
 sim/operation/failures/rel_hydpmp4		int	y	failure_enum	Hydraulic System 4 (pump fail)	
 sim/operation/failures/rel_hydpmp5		int	y	failure_enum	Hydraulic System 5 (pump fail)	
 sim/operation/failures/rel_hydpmp6		int	y	failure_enum	Hydraulic System 6 (pump fail)	
 sim/operation/failures/rel_hydpmp7		int	y	failure_enum	Hydraulic System 7 (pump fail)	
 sim/operation/failures/rel_hydpmp8		int	y	failure_enum	Hydraulic System 8 (pump fail)	
-sim/operation/failures/rel_hydleak		int	y	failure_enum	Hydraulic System 1 (leak)	
-sim/operation/failures/rel_hydleak2		int	y	failure_enum	Hydraulic System 2 (leak)	
-sim/operation/failures/rel_hydleak3		int	y	failure_enum	Hydraulic System 3 (leak)	
-sim/operation/failures/rel_hydoverp		int	y	failure_enum	Hydraulic System 1 (over pressure)	
-sim/operation/failures/rel_hydoverp2		int	y	failure_enum	Hydraulic System 2 (over pressure)	
-sim/operation/failures/rel_hydoverp3		int	y	failure_enum	Hydraulic System 3 (over pressure)	
 sim/operation/failures/rel_clutch		int	y	failure_enum	Helicopter/Gyrocopter clutch	
-sim/operation/failures/rel_trotor	int	y	failure_enum	Tail rotor transmission	
-sim/operation/failures/rel_apu		int	y	failure_enum	APU failure to start or run	
-sim/operation/failures/rel_apu_fire	int	y	failure_enum	APU catastrophic failure with fire	
+sim/operation/failures/rel_trotor	int	y	failure_enum	Tail rotor transmission
 sim/operation/failures/rel_elec_gyr	int	y	failure_enum	Electric gyro system 1 - gyro motor Failure	
 sim/operation/failures/rel_elec_gyr2	int	y	failure_enum	Electric gyro system 2 - gyro motor Failure
-sim/operation/failures/rel_lrn1		int	y	failure_enum	long-range navigation pilot (any R-NAV system including IRS, Omega, Loran,...)	
-sim/operation/failures/rel_lrn2		int	y	failure_enum	long-range navigation copilot (any R-NAV system including IRS, Omega, Loran,...)
-sim/operation/failures/rel_adc_comp	int	y	failure_enum	air data computer	
-sim/operation/failures/rel_adc_comp_2	int	y	failure_enum	air data computer 2	
-sim/operation/failures/rel_g_arthorz	int	y	failure_enum	AHRS	
-sim/operation/failures/rel_g_arthorz_2	int	y	failure_enum	AHRS 2	
 sim/operation/failures/rel_magLFT2	int	y	failure_enum	Left Magneto Fail - engine 3	
 sim/operation/failures/rel_magLFT3	int	y	failure_enum	Left Magneto Fail - engine 4	
 sim/operation/failures/rel_magLFT4	int	y	failure_enum	Left Magneto Fail - engine 5	
@@ -485,24 +516,18 @@ sim/operation/failures/rel_prpcrs4	int	y	failure_enum	Prop governor fail to coar
 sim/operation/failures/rel_prpcrs5	int	y	failure_enum	Prop governor fail to coarse - engine 6	
 sim/operation/failures/rel_prpcrs6	int	y	failure_enum	Prop governor fail to coarse - engine 7	
 sim/operation/failures/rel_prpcrs7	int	y	failure_enum	Prop governor fail to coarse - engine 8
-sim/operation/failures/rel_revers0	int	y	failure_enum	Thrust Reversers Inop - engine 1	
-sim/operation/failures/rel_revers1	int	y	failure_enum	Thrust Reversers Inop - engine 2	
 sim/operation/failures/rel_revers2	int	y	failure_enum	Thrust Reversers Inop - engine 3	
 sim/operation/failures/rel_revers3	int	y	failure_enum	Thrust Reversers Inop - engine 4	
 sim/operation/failures/rel_revers4	int	y	failure_enum	Thrust Reversers Inop - engine 5	
 sim/operation/failures/rel_revers5	int	y	failure_enum	Thrust Reversers Inop - engine 6	
 sim/operation/failures/rel_revers6	int	y	failure_enum	Thrust Reversers Inop - engine 7	
 sim/operation/failures/rel_revers7	int	y	failure_enum	Thrust Reversers Inop - engine 8	
-sim/operation/failures/rel_revdep0	int	y	failure_enum	Thrust Reversers Deploy - engine 1	
-sim/operation/failures/rel_revdep1	int	y	failure_enum	Thrust Reversers Deploy - engine 2	
 sim/operation/failures/rel_revdep2	int	y	failure_enum	Thrust Reversers Deploy - engine 3	
 sim/operation/failures/rel_revdep3	int	y	failure_enum	Thrust Reversers Deploy - engine 4	
 sim/operation/failures/rel_revdep4	int	y	failure_enum	Thrust Reversers Deploy - engine 5	
 sim/operation/failures/rel_revdep5	int	y	failure_enum	Thrust Reversers Deploy - engine 6	
 sim/operation/failures/rel_revdep6	int	y	failure_enum	Thrust Reversers Deploy - engine 7	
-sim/operation/failures/rel_revdep7	int	y	failure_enum	Thrust Reversers Deploy - engine 8	
-sim/operation/failures/rel_revloc0	int	y	failure_enum	Thrust Reversers Locked - engine 1	
-sim/operation/failures/rel_revloc1	int	y	failure_enum	Thrust Reversers Locked - engine 2	
+sim/operation/failures/rel_revdep7	int	y	failure_enum	Thrust Reversers Deploy - engine 8		
 sim/operation/failures/rel_revloc2	int	y	failure_enum	Thrust Reversers Locked - engine 3	
 sim/operation/failures/rel_revloc3	int	y	failure_enum	Thrust Reversers Locked - engine 4	
 sim/operation/failures/rel_revloc4	int	y	failure_enum	Thrust Reversers Locked - engine 5	
@@ -544,10 +569,6 @@ sim/operation/failures/rel_cascade_prop_RA	int	y	failure_enum	VTOL/drone cascade
 sim/operation/failures/rel_vector_actuator	int	y	failure_enum	VTOL/drone thrust vector actuator	
 sim/operation/failures/rel_upper_IMU	int	y	failure_enum	VTOL/drone upper rotors IMU	
 sim/operation/failures/rel_lower_IMU	int	y	failure_enum	VTOL/drone lower rotors IMU	
-sim/operation/failures/rel_airbus_alternate	int	y	failure_enum	rel_airbus_alternate	
-sim/operation/failures/rel_airbus_alternate2	int	y	failure_enum	rel_airbus_alternate2	
-sim/operation/failures/rel_airbus_direct	int	y	failure_enum	rel_airbus_direct	
-sim/operation/failures/rel_autoslats	int	y	failure_enum	rel_autoslats	
 sim/operation/failures/rel_lagear_6	int	y	failure_enum	rel_gear_jam_6	
 sim/operation/failures/rel_lagear_7	int	y	failure_enum	rel_gear_jam_7	
 sim/operation/failures/rel_lagear_8	int	y	failure_enum	rel_gear_jam_8	
@@ -566,34 +587,30 @@ sim/operation/failures/rel_bus3_other_bus	int	y	failure_enum	rel_bus3_other_bus
 sim/operation/failures/rel_bus4_other_bus	int	y	failure_enum	rel_bus4_other_bus	
 sim/operation/failures/rel_bus5_other_bus	int	y	failure_enum	rel_bus5_other_bus	
 
+6. SONSTIGE AUSGESCHLOSSENE
 sim/operation/failures/rel_wind_shear	int	y	failure_enum	Wind shear/microburst		
-sim/operation/failures/rel_brown_out	int	y	failure_enum	Induce dusty brown-out	
+sim/operation/failures/rel_brown_out	int	y	failure_enum	Induce dusty brown-out
+
 sim/operation/failures/rel_flt_incursion	int	y	failure_enum	Runway incursion in-air	
 sim/operation/failures/rel_rwy_incursion_1	int	y	failure_enum	Runway incursion - aircraft near runway	
 sim/operation/failures/rel_rwy_incursion_2	int	y	failure_enum	Runway incursion - aircraft on runway
 
+sim/operation/failures/rel_conlock	int	y	failure_enum	Controls locked
 sim/operation/failures/rel_gen_esys	int	y	failure_enum	General electrical failure
 sim/operation/failures/rel_ex_power_on	int	y	failure_enum	External power is on
 sim/operation/failures/rel_pass_o2_on	int	y	failure_enum	Passenger oxygen on
 
+sim/operation/failures/oil_power_thrust_ratio	float[16]	n	ratio	Oil power or thrust ratio	
+sim/operation/failures/failures	int[667]	n	enum	661 separate failure codes [was 564]
 
 
-
-sim/operation/failures/rel_trim_rud	int	y	failure_enum	Yaw Trim
-sim/operation/failures/rel_trim_ail	int	y	failure_enum	Roll trim
-sim/operation/failures/rel_trim_elv	int	y	failure_enum	Pitch Trim
-sim/operation/failures/rel_conlock	int	y	failure_enum	Controls locked
+FLIGHT CONTROLS UND STRUKTURSCHÄDEN
 sim/operation/failures/rel_rud_L_jam	int	y	failure_enum	yaw control, left pedals jammed
 sim/operation/failures/rel_rud_R_jam	int	y	failure_enum	yaw control, right pedals jammed
 sim/operation/failures/rel_ail_L_jam	int	y	failure_enum	roll control, left control column jammed
 sim/operation/failures/rel_ail_R_jam	int	y	failure_enum	roll control, right control column jammed
 sim/operation/failures/rel_elv_L_jam	int	y	failure_enum	pitch control, left control column jammed
 sim/operation/failures/rel_elv_R_jam	int	y	failure_enum	pitch control, right control column jammed
-
-
-sim/operation/failures/rel_servo_thro	int	y	failure_enum	autopilot servos failed - throttles
-
-sim/operation/failures/rel_conlock	int	y	failure_enum	Controls locked	
 sim/operation/failures/rel_rud_L	int	y	failure_enum	yaw control fail, no left authority	
 sim/operation/failures/rel_rud_L1	int	y	failure_enum	yaw control 1 fail, no left authority	
 sim/operation/failures/rel_rud_L2	int	y	failure_enum	yaw control 2 fail, no left authority	
@@ -706,81 +723,6 @@ sim/operation/failures/rel_fcon_rspo_2_lft_cntr	int	y	failure_enum	flight contro
 sim/operation/failures/rel_fcon_rspo_2_rgt_cntr	int	y	failure_enum	flight controls right rollspoiler 2 locked at center	
 sim/operation/failures/rel_fcon_yawb_x_lft_cntr	int	y	failure_enum	flight controls left  yawbrake (drag rudder) locked at center	
 sim/operation/failures/rel_fcon_yawb_x_rgt_cntr	int	y	failure_enum	flight controls right yawbrake (drag rudder) locked at center
-	
-
-sim/operation/failures/oil_power_thrust_ratio	float[16]	n	ratio	Oil power or thrust ratio	
-sim/operation/failures/failures	int[667]	n	enum	661 separate failure codes [was 564]
-
-
-sim/operation/failures/rel_clonoz0	int	y	failure_enum	Hung start (clogged nozzles) - Engine 1	
-sim/operation/failures/rel_clonoz1	int	y	failure_enum	Hung start (clogged nozzles) - Engine 2	
-sim/operation/failures/rel_clonoz2	int	y	failure_enum	Hung start (clogged nozzles) - Engine 3	
-sim/operation/failures/rel_clonoz3	int	y	failure_enum	Hung start (clogged nozzles) - Engine 4	
-sim/operation/failures/rel_clonoz4	int	y	failure_enum	Hung start (clogged nozzles) - Engine 5	
-sim/operation/failures/rel_clonoz5	int	y	failure_enum	Hung start (clogged nozzles) - Engine 6	
-sim/operation/failures/rel_clonoz6	int	y	failure_enum	Hung start (clogged nozzles) - Engine 7	
-sim/operation/failures/rel_clonoz7	int	y	failure_enum	Hung start (clogged nozzles) - Engine 8
-sim/operation/failures/rel_hotsta0	int	y	failure_enum	Hot Start - engine 0	
-sim/operation/failures/rel_hotsta1	int	y	failure_enum	Hot Start - engine 1	
-sim/operation/failures/rel_hotsta2	int	y	failure_enum	Hot Start - engine 2	
-sim/operation/failures/rel_hotsta3	int	y	failure_enum	Hot Start - engine 3	
-sim/operation/failures/rel_hotsta4	int	y	failure_enum	Hot Start - engine 4	
-sim/operation/failures/rel_hotsta5	int	y	failure_enum	Hot Start - engine 5	
-sim/operation/failures/rel_hotsta6	int	y	failure_enum	Hot Start - engine 6	
-sim/operation/failures/rel_hotsta7	int	y	failure_enum	Hot Start - engine 7	
-sim/operation/failures/rel_runITT0	int	y	failure_enum	Runway Hot ITT - engine 1	
-sim/operation/failures/rel_runITT1	int	y	failure_enum	Runway Hot ITT - engine 2	
-sim/operation/failures/rel_runITT2	int	y	failure_enum	Runway Hot ITT - engine 3	
-sim/operation/failures/rel_runITT3	int	y	failure_enum	Runway Hot ITT - engine 4	
-sim/operation/failures/rel_runITT4	int	y	failure_enum	Runway Hot ITT - engine 5	
-sim/operation/failures/rel_runITT5	int	y	failure_enum	Runway Hot ITT - engine 6	
-sim/operation/failures/rel_runITT6	int	y	failure_enum	Runway Hot ITT - engine 7	
-sim/operation/failures/rel_runITT7	int	y	failure_enum	Runway Hot ITT - engine 8
-sim/operation/failures/rel_ice_inlet_heat3	int	y	failure_enum	Inlet heat, engine 3	
-sim/operation/failures/rel_ice_inlet_heat4	int	y	failure_enum	Inlet heat, engine 4	
-sim/operation/failures/rel_ice_inlet_heat5	int	y	failure_enum	Inlet heat, engine 5	
-sim/operation/failures/rel_ice_inlet_heat6	int	y	failure_enum	Inlet heat, engine 6	
-sim/operation/failures/rel_ice_inlet_heat7	int	y	failure_enum	Inlet heat, engine 7	
-sim/operation/failures/rel_ice_inlet_heat8	int	y	failure_enum	Inlet heat, engine 8
-sim/operation/failures/rel_ice_prop_heat3	int	y	failure_enum	Prop Heat, engine 3	
-sim/operation/failures/rel_ice_prop_heat4	int	y	failure_enum	Prop Heat, engine 4	
-sim/operation/failures/rel_ice_prop_heat5	int	y	failure_enum	Prop Heat, engine 5	
-sim/operation/failures/rel_ice_prop_heat6	int	y	failure_enum	Prop Heat, engine 6	
-sim/operation/failures/rel_ice_prop_heat7	int	y	failure_enum	Prop Heat, engine 7	
-sim/operation/failures/rel_ice_prop_heat8	int	y	failure_enum	Prop Heat, engine 8
-
-
-sim/operation/failures/rel_hunsta0	int	y	failure_enum	Hung Start - engine 0	
-sim/operation/failures/rel_hunsta1	int	y	failure_enum	Hung Start - engine 1	
-sim/operation/failures/rel_hunsta2	int	y	failure_enum	Hung Start - engine 2
-sim/operation/failures/rel_pshaft0	int	y	failure_enum	Drive Shaft - engine 1	
-sim/operation/failures/rel_pshaft1	int	y	failure_enum	Drive Shaft - engine 2	
-sim/operation/failures/rel_pshaft2	int	y	failure_enum	Drive Shaft - engine 3	
-sim/operation/failures/rel_pshaft3	int	y	failure_enum	Drive Shaft - engine 4	
-sim/operation/failures/rel_pshaft4	int	y	failure_enum	Drive Shaft - engine 5	
-sim/operation/failures/rel_pshaft5	int	y	failure_enum	Drive Shaft - engine 6	
-sim/operation/failures/rel_pshaft6	int	y	failure_enum	Drive Shaft - engine 7	
-sim/operation/failures/rel_pshaft7	int	y	failure_enum	Drive Shaft - engine 8	
-sim/operation/failures/rel_seize_0	int	y	failure_enum	Engine Seize - engine 1	
-sim/operation/failures/rel_seize_1	int	y	failure_enum	Engine Seize - engine 2	
-sim/operation/failures/rel_seize_2	int	y	failure_enum	Engine Seize - engine 3	
-sim/operation/failures/rel_seize_3	int	y	failure_enum	Engine Seize - engine 4	
-sim/operation/failures/rel_seize_4	int	y	failure_enum	Engine Seize - engine 5	
-sim/operation/failures/rel_seize_5	int	y	failure_enum	Engine Seize - engine 6	
-sim/operation/failures/rel_seize_6	int	y	failure_enum	Engine Seize - engine 7	
-sim/operation/failures/rel_seize_7	int	y	failure_enum	Engine Seize - engine 8	
-sim/operation/failures/rel_govnr_0	int	y	failure_enum	Governor throttle fail - engine 1	
-sim/operation/failures/rel_govnr_1	int	y	failure_enum	Governor throttle fail - engine 2
-sim/operation/failures/rel_chipde0	int	y	failure_enum	Chip Detected - engine 1	
-sim/operation/failures/rel_chipde1	int	y	failure_enum	Chip Detected - engine 2	
-sim/operation/failures/rel_chipde2	int	y	failure_enum	Chip Detected - engine 3	
-sim/operation/failures/rel_chipde3	int	y	failure_enum	Chip Detected - engine 4	
-sim/operation/failures/rel_chipde4	int	y	failure_enum	Chip Detected - engine 5	
-sim/operation/failures/rel_chipde5	int	y	failure_enum	Chip Detected - engine 6	
-sim/operation/failures/rel_chipde6	int	y	failure_enum	Chip Detected - engine 7	
-sim/operation/failures/rel_chipde7	int	y	failure_enum	Chip Detected - engine 8	
-
-
 sim/operation/failures/rel_L_flp_off	int	y	failure_enum	Left flap remove	
 sim/operation/failures/rel_R_flp_off	int	y	failure_enum	Right flap remove
 sim/operation/failures/rel_L_flp2_off	int	y	failure_enum	Left flap 2 remove	
@@ -869,13 +811,68 @@ sim/operation/failures/rel_fcon_flap_2_lft_gone	int	y	failure_enum	flight contro
 sim/operation/failures/rel_fcon_flap_2_rgt_gone	int	y	failure_enum	flight controls right flap 2 departed teh airframe	
 
 
-sim/operation/failures/rel_bleed_air_lft	int	y	failure_enum	The left engine is not providing enough pressure	
-sim/operation/failures/rel_bleed_air_rgt	int	y	failure_enum	The right engine is not providing enough pressure	
-sim/operation/failures/rel_APU_press		int	y	failure_enum	APU is not providing bleed air for engine start or pressurization	
+ENGINES
+sim/operation/failures/rel_hunsta0	int	y	failure_enum	Hung Start - engine 0	
+sim/operation/failures/rel_hunsta1	int	y	failure_enum	Hung Start - engine 1	
+sim/operation/failures/rel_hunsta2	int	y	failure_enum	Hung Start - engine 2
+sim/operation/failures/rel_pshaft0	int	y	failure_enum	Drive Shaft - engine 1	
+sim/operation/failures/rel_pshaft1	int	y	failure_enum	Drive Shaft - engine 2	
+sim/operation/failures/rel_pshaft2	int	y	failure_enum	Drive Shaft - engine 3	
+sim/operation/failures/rel_pshaft3	int	y	failure_enum	Drive Shaft - engine 4	
+sim/operation/failures/rel_pshaft4	int	y	failure_enum	Drive Shaft - engine 5	
+sim/operation/failures/rel_pshaft5	int	y	failure_enum	Drive Shaft - engine 6	
+sim/operation/failures/rel_pshaft6	int	y	failure_enum	Drive Shaft - engine 7	
+sim/operation/failures/rel_pshaft7	int	y	failure_enum	Drive Shaft - engine 8	
+sim/operation/failures/rel_seize_0	int	y	failure_enum	Engine Seize - engine 1	
+sim/operation/failures/rel_seize_1	int	y	failure_enum	Engine Seize - engine 2	
+sim/operation/failures/rel_seize_2	int	y	failure_enum	Engine Seize - engine 3	
+sim/operation/failures/rel_seize_3	int	y	failure_enum	Engine Seize - engine 4	
+sim/operation/failures/rel_seize_4	int	y	failure_enum	Engine Seize - engine 5	
+sim/operation/failures/rel_seize_5	int	y	failure_enum	Engine Seize - engine 6	
+sim/operation/failures/rel_seize_6	int	y	failure_enum	Engine Seize - engine 7	
+sim/operation/failures/rel_seize_7	int	y	failure_enum	Engine Seize - engine 8	
+sim/operation/failures/rel_chipde0	int	y	failure_enum	Chip Detected - engine 1	
+sim/operation/failures/rel_chipde1	int	y	failure_enum	Chip Detected - engine 2	
+sim/operation/failures/rel_chipde2	int	y	failure_enum	Chip Detected - engine 3	
+sim/operation/failures/rel_chipde3	int	y	failure_enum	Chip Detected - engine 4	
+sim/operation/failures/rel_chipde4	int	y	failure_enum	Chip Detected - engine 5	
+sim/operation/failures/rel_chipde5	int	y	failure_enum	Chip Detected - engine 6	
+sim/operation/failures/rel_chipde6	int	y	failure_enum	Chip Detected - engine 7	
+sim/operation/failures/rel_chipde7	int	y	failure_enum	Chip Detected - engine 8
+sim/operation/failures/rel_clonoz0	int	y	failure_enum	Hung start (clogged nozzles) - Engine 1	
+sim/operation/failures/rel_clonoz1	int	y	failure_enum	Hung start (clogged nozzles) - Engine 2	
+sim/operation/failures/rel_clonoz2	int	y	failure_enum	Hung start (clogged nozzles) - Engine 3	
+sim/operation/failures/rel_clonoz3	int	y	failure_enum	Hung start (clogged nozzles) - Engine 4	
+sim/operation/failures/rel_clonoz4	int	y	failure_enum	Hung start (clogged nozzles) - Engine 5	
+sim/operation/failures/rel_clonoz5	int	y	failure_enum	Hung start (clogged nozzles) - Engine 6	
+sim/operation/failures/rel_clonoz6	int	y	failure_enum	Hung start (clogged nozzles) - Engine 7	
+sim/operation/failures/rel_clonoz7	int	y	failure_enum	Hung start (clogged nozzles) - Engine 8
+sim/operation/failures/rel_hotsta0	int	y	failure_enum	Hot Start - engine 0	
+sim/operation/failures/rel_hotsta1	int	y	failure_enum	Hot Start - engine 1	
+sim/operation/failures/rel_hotsta2	int	y	failure_enum	Hot Start - engine 2	
+sim/operation/failures/rel_hotsta3	int	y	failure_enum	Hot Start - engine 3	
+sim/operation/failures/rel_hotsta4	int	y	failure_enum	Hot Start - engine 4	
+sim/operation/failures/rel_hotsta5	int	y	failure_enum	Hot Start - engine 5	
+sim/operation/failures/rel_hotsta6	int	y	failure_enum	Hot Start - engine 6	
+sim/operation/failures/rel_hotsta7	int	y	failure_enum	Hot Start - engine 7	
+sim/operation/failures/rel_runITT0	int	y	failure_enum	Runway Hot ITT - engine 1	
+sim/operation/failures/rel_runITT1	int	y	failure_enum	Runway Hot ITT - engine 2	
+sim/operation/failures/rel_runITT2	int	y	failure_enum	Runway Hot ITT - engine 3	
+sim/operation/failures/rel_runITT3	int	y	failure_enum	Runway Hot ITT - engine 4	
+sim/operation/failures/rel_runITT4	int	y	failure_enum	Runway Hot ITT - engine 5	
+sim/operation/failures/rel_runITT5	int	y	failure_enum	Runway Hot ITT - engine 6	
+sim/operation/failures/rel_runITT6	int	y	failure_enum	Runway Hot ITT - engine 7	
+sim/operation/failures/rel_runITT7	int	y	failure_enum	Runway Hot ITT - engine 8
+sim/operation/failures/rel_ice_inlet_heat3	int	y	failure_enum	Inlet heat, engine 3	
+sim/operation/failures/rel_ice_inlet_heat4	int	y	failure_enum	Inlet heat, engine 4	
+sim/operation/failures/rel_ice_inlet_heat5	int	y	failure_enum	Inlet heat, engine 5	
+sim/operation/failures/rel_ice_inlet_heat6	int	y	failure_enum	Inlet heat, engine 6	
+sim/operation/failures/rel_ice_inlet_heat7	int	y	failure_enum	Inlet heat, engine 7	
+sim/operation/failures/rel_ice_inlet_heat8	int	y	failure_enum	Inlet heat, engine 8
+sim/operation/failures/rel_ice_prop_heat3	int	y	failure_enum	Prop Heat, engine 3	
+sim/operation/failures/rel_ice_prop_heat4	int	y	failure_enum	Prop Heat, engine 4	
+sim/operation/failures/rel_ice_prop_heat5	int	y	failure_enum	Prop Heat, engine 5	
+sim/operation/failures/rel_ice_prop_heat6	int	y	failure_enum	Prop Heat, engine 6	
+sim/operation/failures/rel_ice_prop_heat7	int	y	failure_enum	Prop Heat, engine 7	
+sim/operation/failures/rel_ice_prop_heat8	int	y	failure_enum	Prop Heat, engine 8
 
-sim/operation/failures/rel_tat_2	int	y	failure_enum	TAT probe, copilot	
-sim/operation/failures/rel_tat_stby	int	y	failure_enum	TAT probe, stby	
-
-
-sim/operation/failures/rel_depres_slow		int	y	failure_enum	Slow cabin leak - descend or black out	
-sim/operation/failures/rel_depres_fast		int	y	failure_enum	catastrophic decompression - yer dead	
