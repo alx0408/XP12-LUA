@@ -1,10 +1,9 @@
 {
-  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
   "runtime": {
     "version": "Lua 5.1"
   },
   "diagnostics": {
-    "disable": ["lowercase-global"],
+    "disable": ["lowercase-global", "undefined-global"],
     "globals": [
       "do_every_draw",
       "do_every_frame",
@@ -105,7 +104,6 @@
       "in_replay",
       "dr_on_ground",
       "dr_acf_icao",
-      "dr_groundspeed",
       "lrl_vertfpm",
       "lrl_gforce",
       "lrl_boolOnGroundAny",

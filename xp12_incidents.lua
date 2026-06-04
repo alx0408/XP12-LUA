@@ -22,12 +22,12 @@ math.randomseed(os.time())
 -- ---- Condition DataRefs ------------------------------------
 -- dataref() does not support [n] array syntax in FlyWithLua 2.8.x
 -- → arrays read directly via XPLMFindDataRef + XPLMGetDatavi/vf
-dataref("dr_on_ground",   "sim/flightmodel/failures/onground_any")
-dataref("dr_acf_icao",    "sim/aircraft/view/acf_ICAO")
-dataref("dr_groundspeed", "sim/flightmodel/position/groundspeed")
+dataref("dr_on_ground", "sim/flightmodel/failures/onground_any")
+dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO")
 
-local _ref_engn  = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
-local _ref_volts = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
+local _ref_engn   = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
+local _ref_volts  = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
+local _ref_gspeed = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 
 local function airborne()
     return dr_on_ground == 0
@@ -503,7 +503,8 @@ end
 
 -- ---- Condition check ---------------------------------------
 local function ground_roll()
-    return dr_on_ground ~= 0 and (dr_groundspeed or 0) > 15.0
+    if not _ref_gspeed then return dr_on_ground ~= 0 end
+    return dr_on_ground ~= 0 and XPLMGetDataf(_ref_gspeed) > 15.0
 end
 
 local function condition_ok(f)
