@@ -123,10 +123,11 @@ new_table("lrl_wspd", 180)       -- Windgeschwindigkeit während Float
 ------------------------------------------------------------
 
 -- Anzeige
-lrl_popupText     = { "", "Landing Rate v2.0 (ALx)", "Based on Dan Berry v1.83" }
-lrl_showUntil     = os.clock() + 5
-lrl_logDisplayOn  = true
+lrl_popupText     = { "", "Landing Rate v4.2 (ALx)", "Based on Dan Berry v1.83" }
+lrl_showUntil     = 0
+lrl_logDisplayOn  = false
 lrl_popupState    = lrl_STEERINGDN
+lrl_startup_armed = true
 
 -- Landing-Rate 
 lrl_landingRate   = nil
@@ -198,6 +199,13 @@ end
 ------------------------------------------------------------
 
 function lrl_loopCallback()
+
+	-- startup popup: defer timing to first draw frame
+	if lrl_startup_armed then
+		lrl_showUntil    = os.clock() + 5
+		lrl_logDisplayOn = true
+		lrl_startup_armed = false
+	end
 
 	-- 1) Werte aktualisieren
 	lrl_updateLandingResult()
