@@ -36,6 +36,7 @@ FUEL_LEAK         = DEFAULT
 FUEL_WATER        = DEFAULT
 FUEL_TYPE         = OFF
 DOOR_OPEN         = DEFAULT
+SMOKE             = DEFAULT
 
 
 # ---- ENGINES -----------------------------------------------
@@ -75,10 +76,9 @@ PROP_SYNC         = DEFAULT	# bei single engine am besten OFF
 
 
 # ---- ELECTRICAL --------------------------------------------
-SMOKE             = DEFAULT
 ELEC_BUS1         = DEFAULT
 ELEC_BUS2         = DEFAULT
-INVERTER_1        = DEFAULT
+INVERTER_1        = DEFAULT	# bei piston fast nie. kann ggf. raus
 INVERTER_2        = DEFAULT
 GENERATOR_1       = DEFAULT
 GENERATOR_2       = DEFAULT
@@ -89,10 +89,10 @@ GEN0_HI           = DEFAULT
 GEN1_LO           = DEFAULT
 GEN1_HI           = DEFAULT
 BAT0_LO           = DEFAULT
-BAT0_HI           = DEFAULT
+BAT0_HI           = DEFAULT	#macht eigentlich nur sinn als folgefehler von alternator / avionics laufem auch mit 32 V / kann ggf. raus.
 BAT1_LO           = DEFAULT
 BAT1_HI           = DEFAULT
-AVIONICS_FAN      = DEFAULT
+AVIONICS_FAN      = DEFAULT	# keine Zeile in XP failures, keine Wirkung in C172 - scheint wirkungslos
 
 # ---- LIGHTS ------------------------------------------------
 LITES_NAV         = DEFAULT

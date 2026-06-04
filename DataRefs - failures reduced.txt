@@ -71,7 +71,7 @@ sim/operation/failures/rel_bat0_hi	int	y	failure_enum	Battery 0 voltage hi
 sim/operation/failures/rel_bat1_lo	int	y	failure_enum	Battery 1 voltage low	
 sim/operation/failures/rel_bat1_hi	int	y	failure_enum	Battery 1 voltage hi
 sim/operation/failures/rel_avionics_fan	int	y	failure_enum	Avionics fan (equipment cooling) failure
-sim/operation/failures/rel_g_magmtr	int	y	failure_enum	magnetometer
+
 
 LIGHTS
 sim/operation/failures/rel_lites_nav	int	y	failure_enum	Nav lights	
@@ -126,6 +126,7 @@ sim/operation/failures/rel_wxr_radar	int	y	failure_enum	onboard weather radar
 sim/operation/failures/rel_g_gia1	int	y	failure_enum	GIA 1
 sim/operation/failures/rel_g_gia2	int	y	failure_enum	GIA 2
 sim/operation/failures/rel_g_gea	int	y	failure_enum	gea
+sim/operation/failures/rel_g_magmtr	int	y	failure_enum	magnetometer
 
 sim/operation/failures/rel_navcom1	int	y	failure_enum	Nav and com 1 radio	
 sim/operation/failures/rel_navcom2	int	y	failure_enum	Nav and com 2 radio	
