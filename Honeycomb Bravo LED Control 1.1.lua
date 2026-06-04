@@ -448,7 +448,7 @@ create_command(
 
 
 
-do_sometimes("handle_led_changes()")
+do_often("handle_led_changes()")
 
 function exit_handler()
     all_leds_off()
