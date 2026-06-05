@@ -51,8 +51,7 @@ end
 
 -- ---- Fix conditions ----------------------------------------
 local function smoke_fixable()
-    local bat = get("sim/cockpit/electrical/battery_on")
-    return bat ~= nil and bat == 0
+    return not electrical_on()
 end
 
 local function trim_fixable()
