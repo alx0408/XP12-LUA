@@ -22,8 +22,8 @@ math.randomseed(os.time())
 -- ---- Condition DataRefs ------------------------------------
 -- dataref() does not support [n] array syntax in FlyWithLua 2.8.x
 -- → arrays read directly via XPLMFindDataRef + XPLMGetDatavi/vf
-dataref("dr_on_ground", "sim/flightmodel/failures/onground_any")
-dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO")
+dataref("dr_on_ground", "sim/flightmodel/failures/onground_any", "readonly")
+dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO",          "readonly")
 
 local _ref_engn   = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
 local _ref_volts  = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
