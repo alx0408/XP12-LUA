@@ -30,7 +30,7 @@ local _ref_volts  = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_ap_on  = XPLMFindDataRef("sim/cockpit/autopilot/autopilot_on")
 local _ref_bat_on = XPLMFindDataRef("sim/cockpit/electrical/battery_on")
-local _ref_avion  = XPLMFindDataRef("sim/cockpit/electrical/avionic_on")
+local _ref_avion  = XPLMFindDataRef("sim/cockpit/electrical/avionics_on")
 local _ref_gen_on = XPLMFindDataRef("sim/cockpit/electrical/generator_on")
 
 local function airborne()
