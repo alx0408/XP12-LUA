@@ -102,7 +102,6 @@
       "y_agl_m",
       "sim_paused",
       "in_replay",
-      "dr_on_ground",
       "dr_acf_icao",
       "lrl_vertfpm",
       "lrl_gforce",

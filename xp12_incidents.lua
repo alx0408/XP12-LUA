@@ -22,10 +22,10 @@ math.randomseed(os.time())
 -- ---- Condition DataRefs ------------------------------------
 -- dataref() does not support [n] array syntax in FlyWithLua 2.8.x
 -- → arrays read directly via XPLMFindDataRef + XPLMGetDatavi/vf
-dataref("dr_on_ground", "sim/flightmodel/failures/onground_any", "readonly")
-dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO",          "readonly")
+dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO", "readonly")
 
-local _ref_engn   = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
+local _ref_on_ground = XPLMFindDataRef("sim/flightmodel/failures/onground_any")
+local _ref_engn      = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
 local _ref_volts  = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_bat1   = XPLMFindDataRef("sim/cockpit2/electrical/battery_on")
@@ -33,7 +33,8 @@ local _ref_avion  = XPLMFindDataRef("sim/cockpit2/switches/avionics_power_on")
 local _ref_gen1   = XPLMFindDataRef("sim/cockpit2/electrical/generator_on")
 
 local function airborne()
-    return dr_on_ground == 0
+    if not _ref_on_ground then return false end
+    return XPLMGetDatai(_ref_on_ground) == 0
 end
 
 local function engine_on()
@@ -524,8 +525,9 @@ end
 
 -- ---- Condition check ---------------------------------------
 local function ground_roll()
-    if not _ref_gspeed then return dr_on_ground ~= 0 end
-    return dr_on_ground ~= 0 and XPLMGetDataf(_ref_gspeed) > 15.0
+    if not _ref_on_ground then return false end
+    if not _ref_gspeed then return XPLMGetDatai(_ref_on_ground) ~= 0 end
+    return XPLMGetDatai(_ref_on_ground) ~= 0 and XPLMGetDataf(_ref_gspeed) > 15.0
 end
 
 local function condition_ok(f)
