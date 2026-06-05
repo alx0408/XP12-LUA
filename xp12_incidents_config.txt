@@ -147,8 +147,8 @@ NAVCOM2           = DEFAULT	# n/a with GPS-device
 ADF1              = DEFAULT
 GPS               = DEFAULT	# position will freeze
 DME               = DEFAULT
-LOC               = DEFAULT
-GLS               = DEFAULT	# = glideslope
+LOC               = DEFAULT	# LOC will red-flag
+GLS               = DEFAULT	# GS will red-flag
 XPNDR             = DEFAULT
 MARKER            = DEFAULT	# TRY INFLIGHT
 RPM_IND_1         = DEFAULT	# does not work on B58
