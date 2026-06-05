@@ -29,8 +29,6 @@ local _ref_engn      = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
 local _ref_volts  = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_ap_on  = XPLMFindDataRef("sim/cockpit/autopilot/autopilot_on")
-local _ref_bat_on = XPLMFindDataRef("sim/cockpit/electrical/battery_on")
-local _ref_avion  = XPLMFindDataRef("sim/cockpit/electrical/avionics_on")
 local _ref_gen_on = XPLMFindDataRef("sim/cockpit/electrical/generator_on")
 
 local function airborne()
@@ -54,12 +52,13 @@ end
 
 -- ---- Fix conditions ----------------------------------------
 local function smoke_fixable()
-    if not _ref_bat_on or not _ref_avion or not _ref_gen_on then return false end
+    if not _ref_gen_on then return false end
+    local bat   = get("sim/cockpit/electrical/battery_on")
+    local avion = get("sim/cockpit/electrical/avionics_on")
+    if bat == nil or avion == nil then return false end
     local v = {}
     XPLMGetDatavi(_ref_gen_on, v, 0, 1)
-    return XPLMGetDatai(_ref_bat_on) == 0
-       and XPLMGetDatai(_ref_avion)  == 0
-       and (v[1] or 1) == 0
+    return bat == 0 and avion == 0 and (v[1] or 1) == 0
 end
 
 local function trim_fixable()
