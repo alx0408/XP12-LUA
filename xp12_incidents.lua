@@ -23,6 +23,7 @@ math.randomseed(os.time())
 -- dataref() does not support [n] array syntax in FlyWithLua 2.8.x
 -- → arrays read directly via XPLMFindDataRef + XPLMGetDatavi/vf
 dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO", "readonly")
+dataref("dr_bat_on",    "sim/cockpit/electrical/battery_on", "readonly")
 
 local _ref_on_ground = XPLMFindDataRef("sim/flightmodel/failures/onground_any")
 local _ref_engn      = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
@@ -51,7 +52,7 @@ end
 
 -- ---- Fix conditions ----------------------------------------
 local function smoke_fixable()
-    return not electrical_on()
+    return dr_bat_on == 0
 end
 
 local function trim_fixable()
