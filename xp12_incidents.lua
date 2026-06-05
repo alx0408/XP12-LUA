@@ -695,6 +695,18 @@ create_command(
     "", ""
 )
 
+-- ---- Status display toggle --------------------------------
+function incidents_toggle_status()
+    incidents_show_status = not incidents_show_status
+end
+
+create_command(
+    "FlyWithLua/Incidents/toggle_status",
+    "Incidents: toggle status display",
+    "incidents_toggle_status()",
+    "", ""
+)
+
 -- ---- Per-failure toggle ------------------------------------
 local function make_toggle(f)
     local fn = "incidents_toggle_" .. f.key:lower()
