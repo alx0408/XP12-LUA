@@ -31,6 +31,7 @@ local _ref_gspeed = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_bat1   = XPLMFindDataRef("sim/cockpit2/electrical/battery_on")
 local _ref_avion  = XPLMFindDataRef("sim/cockpit2/switches/avionics_power_on")
 local _ref_gen1   = XPLMFindDataRef("sim/cockpit2/electrical/generator_on")
+local _ref_ap_on  = XPLMFindDataRef("sim/cockpit/autopilot/autopilot_on")
 
 local function airborne()
     if not _ref_on_ground then return false end
@@ -59,10 +60,9 @@ local function smoke_fixable()
     return bat[1] == 0 and XPLMGetDatai(_ref_avion) == 0 and gen[1] == 0
 end
 
-local trim_fix_active = false
-
 local function trim_fixable()
-    return trim_fix_active
+    if not _ref_ap_on then return false end
+    return XPLMGetDatai(_ref_ap_on) == 0
 end
 
 -- ---- Config ------------------------------------------------
@@ -712,22 +712,6 @@ end
 for _, f in ipairs(failures) do
     make_toggle(f)
 end
-
--- ---- Trim fix: track ap_disc_trim_interrupt hold -----------
-function incidents_trim_fix_begin()
-    trim_fix_active = true
-end
-
-function incidents_trim_fix_end()
-    trim_fix_active = false
-end
-
-wrap_command(
-    "sim/autopilot/ap_disc_trim_interrupt",
-    "incidents_trim_fix_begin()",
-    "",
-    "incidents_trim_fix_end()"
-)
 
 
 -- ============================================================
