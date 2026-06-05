@@ -30,7 +30,6 @@ local _ref_on_ground = XPLMFindDataRef("sim/flightmodel/failures/onground_any")
 local _ref_engn      = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
 local _ref_volts     = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed    = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
-local _ref_fuel      = XPLMFindDataRef("sim/flightmodel/weight/m_fuel")
 
 local function airborne()
     if not _ref_on_ground then return false end
@@ -59,26 +58,6 @@ end
 local function trim_fixable()
     return dr_elec_trim_on == 0
 end
-
--- ---- Fuel drain constants ----------------------------------
--- FUEL_CAP: one tank siphons fast at first, then tapers
-local FUEL_CAP_INIT_RATE = 0.020    -- kg/s at trigger  (~18 GPH)
-local FUEL_CAP_MIN_RATE  = 0.002    -- kg/s floor       (~1.8 GPH)
-local FUEL_CAP_DECAY     = 0.000010 -- kg/s / tick reduction (floor reached ~30 min)
-
--- FUEL_LEAK: nearly undetectable start, progressive worsening
-local FUEL_LEAK_INIT_RATE = 0.0005    -- kg/s  (~0.45 GPH, easy to miss)
-local FUEL_LEAK_GROWTH    = 1.0000962 -- multiply per tick (doubles ~every 2 flight hours)
-
--- ---- Fuel drain state --------------------------------------
-local fuel_cap_active = false
-local fuel_cap_tank   = nil     -- 0 = left, 1 = right (XP 0-based index)
-local fuel_cap_rate   = 0
-
-local fuel_leak_active    = false
-local fuel_leak_tank      = nil  -- "left" | "right" | "both"
-local fuel_leak_rate      = 0
-local fuel_leak_save_tick = 0   -- throttle memory saves (~1 per minute)
 
 -- ---- Smoke culprit state -----------------------------------
 local smoke_culprit    = nil   -- "bat" | "avion" | "gen"
@@ -114,55 +93,6 @@ local function smoke_on_fix(f)
     smoke_prev_avion = dr_avion
     smoke_prev_gen   = dr_gen_warn
     save_memory()
-end
-
--- ---- Fuel mass helpers -------------------------------------
-local function get_tank_fuel(idx)
-    if not _ref_fuel then return 0 end
-    local v = {}
-    XPLMGetDatavf(_ref_fuel, v, idx, 1)
-    return v[1] or 0
-end
-
-local function drain_tank(idx, kg)
-    if not _ref_fuel then return end
-    local cur = get_tank_fuel(idx)
-    if cur > 0 then
-        XPLMSetDatavf(_ref_fuel, { math.max(0, cur - kg) }, idx, 1)
-    end
-end
-
--- ---- Fuel cap drain start / stop ---------------------------
-local function start_fuel_cap_drain()
-    fuel_cap_tank   = math.random(0, 1)
-    fuel_cap_rate   = FUEL_CAP_INIT_RATE
-    fuel_cap_active = true
-end
-
-local function stop_fuel_cap_drain()
-    fuel_cap_active = false
-    fuel_cap_tank   = nil
-    fuel_cap_rate   = 0
-end
-
--- ---- Fuel leak drain start / stop -------------------------
-local function start_fuel_leak_drain()
-    local r = math.random(3)
-    if     r == 1 then fuel_leak_tank = "left"
-    elseif r == 2 then fuel_leak_tank = "right"
-    else                fuel_leak_tank = "both"
-    end
-    fuel_leak_rate      = FUEL_LEAK_INIT_RATE
-    fuel_leak_active    = true
-    fuel_leak_save_tick = 0
-    save_memory()
-end
-
-local function stop_fuel_leak_drain()
-    fuel_leak_active    = false
-    fuel_leak_tank      = nil
-    fuel_leak_rate      = 0
-    fuel_leak_save_tick = 0
 end
 
 -- ---- Config ------------------------------------------------
@@ -324,10 +254,6 @@ save_memory = function()
     if smoke_culprit then
         file:write("SMOKE_CULPRIT = " .. smoke_culprit .. "\n")
     end
-    if fuel_leak_active and fuel_leak_tank then
-        file:write("FUEL_LEAK_RATE = " .. string.format("%.7f", fuel_leak_rate) .. "\n")
-        file:write("FUEL_LEAK_TANK = " .. fuel_leak_tank .. "\n")
-    end
     file:write("\n")
 
     for _, name in ipairs(order) do
@@ -343,9 +269,7 @@ local function load_memory()
     if cfg.active_name == "DEFAULT" then return end
     local file = io.open(MEMORY_PATH, "r")
     if not file then return end
-    local in_section  = false
-    local loaded_rate = nil
-    local loaded_tank = nil
+    local in_section = false
     for line in file:lines() do
         line = line:match("^%s*(.-)%s*$")
         if line ~= "" and not line:match("^#") then
@@ -362,10 +286,6 @@ local function load_memory()
                         smoke_prev_bat   = dr_bat_on
                         smoke_prev_avion = dr_avion
                         smoke_prev_gen   = dr_gen_warn
-                    elseif key == "FUEL_LEAK_RATE" then
-                        loaded_rate = tonumber(val) or FUEL_LEAK_INIT_RATE
-                    elseif key == "FUEL_LEAK_TANK" then
-                        loaded_tank = val
                     else
                         local value = tonumber(val)
                         if value == 6 then
@@ -383,14 +303,6 @@ local function load_memory()
         end
     end
     file:close()
-    -- activate fuel leak drain if both rate and tank were loaded
-    if loaded_rate and loaded_tank then
-        fuel_leak_rate   = loaded_rate
-        fuel_leak_tank   = loaded_tank
-        fuel_leak_active = true
-        local fl_f = find_failure("FUEL_LEAK")
-        if fl_f then set_dr(fl_f, 6) end
-    end
 end
 
 
@@ -403,8 +315,6 @@ local tick_last     = 0
 
 failures = {}
 
--- def()        — standard XP failure with DataRef
--- def_virtual() — script-managed failure without XP DataRef
 local function def(key, dr_path, label, condition, no_memory, fix, on_trigger)
     table.insert(failures, {
         key          = key,
@@ -420,23 +330,6 @@ local function def(key, dr_path, label, condition, no_memory, fix, on_trigger)
     })
 end
 
-local function def_virtual(key, label, condition, no_memory, fix, on_trigger)
-    table.insert(failures, {
-        key          = key,
-        dr           = nil,
-        label        = label,
-        condition    = condition,
-        no_memory    = no_memory,
-        fix          = fix,
-        on_trigger   = on_trigger,
-        _ref         = nil,
-        _fix_cond    = nil,
-        _fire_induced = nil,
-        virtual      = true,
-        _active      = false,
-    })
-end
-
 -- ---- ENVIRONMENT -------------------------------------------
 def("VASI",        "sim/operation/failures/rel_vasi",             "VASI",        nil,        true)
 def("RWY_LIGHTS",  "sim/operation/failures/rel_rwy_lites",        "Rwy Lights",  nil,        true)
@@ -445,8 +338,8 @@ def("SMOKE",       "sim/operation/failures/rel_smoke_cpit",       "Smoke",      
 def("BIRD_RANDOM", "sim/operation/failures/rel_bird_strike",      "Bird/Random", "airborne", true)
 def("BIRD_ENG1",   "sim/operation/failures/rel_bird_strike_eng1", "Bird/Eng1",   "airborne", true)
 def("BIRD_ENG2",   "sim/operation/failures/rel_bird_strike_eng2", "Bird/Eng2",   "airborne", true)
-def_virtual("FUEL_CAP", "Fuel Cap", nil, true, nil,
-    { fn = start_fuel_cap_drain, on_reset = stop_fuel_cap_drain })
+def("FUEL_CAP",    "sim/operation/failures/rel_fuelcap",    "Fuel Cap",    nil, true)
+def("FUEL_LEAK",   "sim/operation/failures/rel_fuel_leak",  "Fuel Leak",   nil, true)
 def("FUEL_WATER",  "sim/operation/failures/rel_fuel_water",       "Fuel Water",  nil,        true)
 def("FUEL_TYPE",   "sim/operation/failures/rel_fuel_type",        "Fuel Type",   nil,        true)
 def("DOOR_OPEN",   "sim/operation/failures/rel_door_open",        "Door Open",   nil,        true)
@@ -474,8 +367,6 @@ def("FUEL_FLOW_1",    "sim/operation/failures/rel_fuelfl0",          "Fuel Flow 
 def("FUEL_FLOW_2",    "sim/operation/failures/rel_fuelfl1",          "Fuel Flow 2",  nil)
 def("FUEL_BLOCK_1",   "sim/operation/failures/rel_fuel_block0",      "Fuel Blk 1",   nil)
 def("FUEL_BLOCK_2",   "sim/operation/failures/rel_fuel_block1",      "Fuel Blk 2",   nil)
-def_virtual("FUEL_LEAK", "Fuel Leak", nil, false, nil,
-    { fn = start_fuel_leak_drain, on_reset = stop_fuel_leak_drain })
 def("OIL_PUMP_1",     "sim/operation/failures/rel_oilpmp0",          "Oil Pump 1",   nil)
 def("OIL_PUMP_2",     "sim/operation/failures/rel_oilpmp1",          "Oil Pump 2",   nil)
 def("OIL_PRESS_LO_1", "sim/operation/failures/rel_eng_lo0",          "OilPressLo 1", nil)
@@ -639,16 +530,11 @@ local function init_refs()
 end
 
 get_dr = function(f)
-    if f.virtual then return f._active and 6 or 0 end
     if not f._ref then return 0 end
     return XPLMGetDatai(f._ref)
 end
 
 set_dr = function(f, value)
-    if f.virtual then
-        f._active = (value == 6)
-        return
-    end
     if not f._ref then return end
     XPLMSetDatai(f._ref, value)
 end
@@ -690,10 +576,6 @@ end
 local function trigger_failure(f)
     set_dr(f, 6)
     save_memory()
-    -- virtual failure: start custom drain
-    if f.on_trigger and f.on_trigger.fn then
-        f.on_trigger.fn(f)
-    end
     -- cascade followup with optional probability and fix_source override
     if f.on_trigger and f.on_trigger.followup then
         for _, entry in ipairs(f.on_trigger.followup) do
@@ -720,9 +602,6 @@ end
 local function reset_failure(f)
     if get_dr(f) > 0 then
         set_dr(f, 0)
-        if f.on_trigger and f.on_trigger.on_reset then
-            f.on_trigger.on_reset()
-        end
         save_memory()
     end
 end
@@ -770,8 +649,6 @@ function incidents_toggle()
         local was = memory_enabled
         memory_enabled = false
         for _, f in ipairs(failures) do reset_failure(f) end
-        -- cap drain does not survive pause (no_memory); stop it explicitly
-        stop_fuel_cap_drain()
         memory_enabled = was
         system_paused = true
     end
@@ -789,7 +666,6 @@ function incidents_reset_profile()
     memory_enabled = false
     for _, f in ipairs(failures) do reset_failure(f) end
     smoke_culprit = nil
-    -- fuel drain state cleared by on_reset callbacks above
     memory_enabled = was_enabled
     save_memory()
     rnd_scheduled = false
@@ -944,14 +820,7 @@ function incidents_draw_status()
     local active = {}
     for _, f in ipairs(failures) do
         if get_dr(f) == 6 then
-            local lbl = f.label
-            -- annotate virtual drain failures with extra info
-            if f.key == "FUEL_CAP" and fuel_cap_tank ~= nil then
-                lbl = lbl .. " [" .. (fuel_cap_tank == 0 and "L" or "R") .. "]"
-            elseif f.key == "FUEL_LEAK" and fuel_leak_tank then
-                lbl = lbl .. " [" .. fuel_leak_tank .. "]"
-            end
-            table.insert(active, lbl)
+            table.insert(active, f.label)
         end
     end
     -- show smoke culprit if known
@@ -1029,6 +898,8 @@ function incidents_fix_tick()
     for _, f in ipairs(failures) do
         local fix_cond = f._fix_cond or (f.fix and f.fix.cond)
         if fix_cond and get_dr(f) == 6 and fix_cond() then
+            local was = memory_enabled
+            memory_enabled = false
             reset_failure(f)
             f._fix_cond = nil
             if f.fix and f.fix.on_fix then f.fix.on_fix(f) end
@@ -1042,6 +913,8 @@ function incidents_fix_tick()
                     end
                 end
             end
+            memory_enabled = was
+            save_memory()
         end
     end
 end
@@ -1084,31 +957,6 @@ function incidents_culprit_tick()
 end
 
 do_sometimes("incidents_culprit_tick()")
-
--- ---- Fuel drain tick ---------------------------------------
-function incidents_fuel_drain_tick()
-    if system_paused then return end
-
-    -- FUEL_CAP: high initial drain, linear taper
-    if fuel_cap_active and fuel_cap_tank ~= nil then
-        drain_tank(fuel_cap_tank, fuel_cap_rate)
-        fuel_cap_rate = math.max(FUEL_CAP_MIN_RATE, fuel_cap_rate - FUEL_CAP_DECAY)
-    end
-
-    -- FUEL_LEAK: progressive exponential growth
-    if fuel_leak_active and fuel_leak_tank ~= nil then
-        if fuel_leak_tank == "left"  or fuel_leak_tank == "both" then drain_tank(0, fuel_leak_rate) end
-        if fuel_leak_tank == "right" or fuel_leak_tank == "both" then drain_tank(1, fuel_leak_rate) end
-        fuel_leak_rate = fuel_leak_rate * FUEL_LEAK_GROWTH
-        fuel_leak_save_tick = fuel_leak_save_tick + 1
-        if fuel_leak_save_tick >= 60 then
-            fuel_leak_save_tick = 0
-            save_memory()
-        end
-    end
-end
-
-do_sometimes("incidents_fuel_drain_tick()")
 
 -- ---- Aircraft change detection ----------------------------
 local last_icao = ""
