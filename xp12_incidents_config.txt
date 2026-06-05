@@ -247,10 +247,14 @@ PROP_COARSE_1     = OFF
 PROP_COARSE_2     = OFF
 
 # ---- ELECTRICAL --------------------------------------------
+GENERATOR_2       = OFF
+BATTERY_2         = OFF
 GEN1_LO           = OFF
 GEN1_HI           = OFF
 BAT1_LO           = OFF
 BAT1_HI           = OFF
+
+# ---- LIGHTS ------------------------------------------------
 
 # ---- SYSTEMS -----------------------------------------------
 PITOT_HEAT_2      = OFF
@@ -263,6 +267,18 @@ HVAC              = OFF
 VACUUM_2          = OFF
 
 # ---- INSTRUMENTS -------------------------------------------
+ALT_COPILOT       = OFF
+AHZ_COPILOT       = OFF
+G_ASI             = OFF	# G1000 only
+G_ALT             = OFF	# G1000 only
+G_VVI             = OFF	# G1000 only
+G_PFD             = OFF	# G1000 only
+G_MFD             = OFF	# G1000 only
+G_GIA1            = OFF	# G1000 only
+G_GIA2            = OFF	# G1000 only
+G_GEA             = OFF	# G1000 only
+MAGNETOMETER      = OFF	# G1000 only
+WXR_RADAR         = OFF
 NAVCOM1           = OFF
 NAVCOM2           = OFF
 RPM_IND_2         = OFF
@@ -289,9 +305,13 @@ ICE_DETECT        = OFF
 # ---- GEAR --------------------------------------------------
 GEAR_IND          = OFF
 GEAR_ACT          = OFF
+GEAR_RET_1        = OFF
+GEAR_RET_2        = OFF
+GEAR_RET_3        = OFF
+TIRE_4            = OFF
+TIRE_5            = OFF
 
 # ---- CONTROLS ----------------------------------------------
-ELV_TRIM_RUN      = OFF
 AIL_TRIM_RUN      = OFF
 RUD_TRIM_RUN      = OFF
 TRIM_AIL          = OFF
