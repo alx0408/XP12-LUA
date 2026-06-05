@@ -141,7 +141,7 @@ G_GIA2            = DEFAULT	# G1000 only
 G_GEA             = DEFAULT	# G1000 only
 MAGNETOMETER      = DEFAULT	# G1000 only
 #prüfen, ob bei G1000 ADC und/oder AHRS ausfallen können (oder ist das nur für Airliner)
-WXR_RADAR         = DEFAULT
+WXR_RADAR         = DEFAULT	# does not work on B58
 NAVCOM1           = DEFAULT	# n/a with GPS-device
 NAVCOM2           = DEFAULT	# n/a with GPS-device
 ADF1              = DEFAULT
@@ -182,7 +182,7 @@ STATIC_ERR_1      = DEFAULT
 STATIC_ERR_2      = DEFAULT
 OAT               = DEFAULT
 ICE_DETECT        = DEFAULT	# for TKS only
-FUEL_QTY          = DEFAULT	#deutscher Text: Treibstoffgütesensor; richtig: Quantity
+FUEL_QTY          = DEFAULT	# dt. "TreibstoffGÜTEsensor"; richtig: quantity
 
 # ---- GEAR --------------------------------------------------
 GEAR_IND          = DEFAULT	# does not work on B58
@@ -461,13 +461,15 @@ BAT1_HI           = OFF
 # generally working
 # prop heat failure = drop only on ampmeter, not on prop-ampmeter
 # vacuum failures needs to be fixed in maintenace
+
 TKS_PUMP          = OFF
 HVAC              = OFF
 
 # ---- INSTRUMENTS -------------------------------------------
-# ADF, Transponder do fail, but do not appear in maintenance
-# GPS (Antenna, not device; position will freeze)
+# ADF, Transponder will fail, but do not appear in maintenance
+# GPS (position will freeze while GPS-device is ON)
 # LOC & GLS (Glide Slope) will freeze with flag
+# Instruments and devices not set to OFF will fail
 # Gear warn will mute
 # Engine instruments are controlled bei REP
 
