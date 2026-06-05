@@ -26,8 +26,8 @@ DEFAULT_MTBF = 10000
 [DEFAULT]
 
 # ---- ENVIRONMENT -------------------------------------------
-VASI              = DEFAULT
-RWY_LIGHTS        = DEFAULT
+VASI              = DEFAULT	# turns off papi / vasi
+RWY_LIGHTS        = DEFAULT	# TRY INFLIGHT
 SMOKE             = DEFAULT	# there needs to be a fix; i.e. electrics OFF + window or door open
 BIRD_RANDOM       = DEFAULT	# bei single engine am besten OFF
 BIRD_ENG1         = DEFAULT
