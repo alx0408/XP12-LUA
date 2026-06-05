@@ -28,6 +28,9 @@ dataref("dr_acf_icao",  "sim/aircraft/view/acf_ICAO")
 local _ref_engn   = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
 local _ref_volts  = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
+local _ref_bat1   = XPLMFindDataRef("sim/cockpit2/electrical/battery_on")
+local _ref_avion  = XPLMFindDataRef("sim/cockpit2/switches/avionics_power_on")
+local _ref_gen1   = XPLMFindDataRef("sim/cockpit2/electrical/generator_on")
 
 local function airborne()
     return dr_on_ground == 0
@@ -45,6 +48,20 @@ local function electrical_on()
     local v = {}
     XPLMGetDatavf(_ref_volts, v, 0, 1)
     return (v[1] or 0) > 1
+end
+
+-- ---- Fix conditions ----------------------------------------
+local function smoke_fixable()
+    if not (_ref_bat1 and _ref_avion and _ref_gen1) then return false end
+    local bat = {}; XPLMGetDatavi(_ref_bat1, bat, 0, 1)
+    local gen = {}; XPLMGetDatavi(_ref_gen1, gen, 0, 1)
+    return bat[1] == 0 and XPLMGetDatai(_ref_avion) == 0 and gen[1] == 0
+end
+
+local trim_fix_active = false
+
+local function trim_fixable()
+    return trim_fix_active
 end
 
 -- ---- Config ------------------------------------------------
@@ -292,13 +309,14 @@ local tick_last     = 0
 
 failures = {}
 
-local function def(key, dr_path, label, condition, no_memory)
+local function def(key, dr_path, label, condition, no_memory, fix)
     table.insert(failures, {
         key       = key,
         dr        = dr_path,
         label     = label,
         condition = condition,
         no_memory = no_memory,
+        fix       = fix,
         _ref      = nil,
     })
 end
@@ -306,7 +324,7 @@ end
 -- ---- ENVIRONMENT -------------------------------------------
 def("VASI",           "sim/operation/failures/rel_vasi",             "VASI",         nil,        true)
 def("RWY_LIGHTS",     "sim/operation/failures/rel_rwy_lites",        "Rwy Lights",   nil,        true)
-def("SMOKE",          "sim/operation/failures/rel_smoke_cpit",       "Smoke",        "engine_or_elec")
+def("SMOKE",          "sim/operation/failures/rel_smoke_cpit",       "Smoke",        "engine_or_elec", nil, { cond = smoke_fixable, hold = 3.0, _t = nil })
 def("BIRD_RANDOM",    "sim/operation/failures/rel_bird_strike",      "Bird/Random",  "airborne", true)
 def("BIRD_ENG1",      "sim/operation/failures/rel_bird_strike_eng1", "Bird/Eng1",    "airborne", true)
 def("BIRD_ENG2",      "sim/operation/failures/rel_bird_strike_eng2", "Bird/Eng2",    "airborne", true)
@@ -480,9 +498,12 @@ def("BRAKES_R",       "sim/operation/failures/rel_rbrakes",          "Brakes R",
 def("FLAP_ACT",       "sim/operation/failures/rel_flap_act",         "Flap Act",     nil)
 def("FLAP_ACT_L",     "sim/operation/failures/rel_fc_L_flp",         "Flap Act L",   nil)
 def("FLAP_ACT_R",     "sim/operation/failures/rel_fc_R_flp",         "Flap Act R",   nil)
-def("ELV_TRIM_RUN",   "sim/operation/failures/rel_elv_trim_run",      "Elv Trim Run", nil)
-def("AIL_TRIM_RUN",   "sim/operation/failures/rel_ail_trim_run",      "Ail Trim Run", nil)
-def("RUD_TRIM_RUN",   "sim/operation/failures/rel_rud_trim_run",      "Rud Trim Run", nil)
+def("ELV_TRIM_RUN",   "sim/operation/failures/rel_elv_trim_run",      "Elv Trim Run", nil, nil, { cond = trim_fixable, hold = 3.0, _t = nil, followup = { "TRIM_ELV", "TRIM_AIL", "TRIM_RUD" } })
+def("AIL_TRIM_RUN",   "sim/operation/failures/rel_ail_trim_run",      "Ail Trim Run", nil, nil, { cond = trim_fixable, hold = 3.0, _t = nil, followup = { "TRIM_ELV", "TRIM_AIL", "TRIM_RUD" } })
+def("RUD_TRIM_RUN",   "sim/operation/failures/rel_rud_trim_run",      "Rud Trim Run", nil, nil, { cond = trim_fixable, hold = 3.0, _t = nil, followup = { "TRIM_ELV", "TRIM_AIL", "TRIM_RUD" } })
+def("TRIM_ELV",       "sim/operation/failures/rel_trim_elv",          "Trim Elv",     nil)
+def("TRIM_AIL",       "sim/operation/failures/rel_trim_ail",          "Trim Ail",     nil)
+def("TRIM_RUD",       "sim/operation/failures/rel_trim_rud",          "Trim Rud",     nil)
 
 -- ---- DataRef handles ---------------------------------------
 local function init_refs()
@@ -690,6 +711,22 @@ for _, f in ipairs(failures) do
     make_toggle(f)
 end
 
+-- ---- Trim fix: track ap_disc_trim_interrupt hold -----------
+function incidents_trim_fix_begin()
+    trim_fix_active = true
+end
+
+function incidents_trim_fix_end()
+    trim_fix_active = false
+end
+
+wrap_command(
+    "sim/autopilot/ap_disc_trim_interrupt",
+    "incidents_trim_fix_begin()",
+    "",
+    "incidents_trim_fix_end()"
+)
+
 
 -- ============================================================
 --  [4] MACRO / STATUS
@@ -824,6 +861,44 @@ function incidents_tick()
 end
 
 do_sometimes("incidents_tick()")
+
+-- ---- Fix tick ----------------------------------------------
+local function find_failure(key)
+    for _, f in ipairs(failures) do
+        if f.key == key then return f end
+    end
+end
+
+function incidents_fix_tick()
+    if system_paused then return end
+    if cfg.mode == "OFF" then return end
+    local now = os.clock()
+    for _, f in ipairs(failures) do
+        if f.fix then
+            if get_dr(f) == 6 and f.fix.cond() then
+                if not f.fix._t then
+                    f.fix._t = now
+                elseif now - f.fix._t >= f.fix.hold then
+                    reset_failure(f)
+                    f.fix._t = nil
+                    if f.fix.followup then
+                        for _, key in ipairs(f.fix.followup) do
+                            local f2 = find_failure(key)
+                            if f2 then
+                                local _, flag = get_mtbf(f2)
+                                if flag ~= "OFF" then trigger_failure(f2) end
+                            end
+                        end
+                    end
+                end
+            else
+                f.fix._t = nil
+            end
+        end
+    end
+end
+
+do_sometimes("incidents_fix_tick()")
 
 -- ---- Aircraft change detection ----------------------------
 local last_icao = ""

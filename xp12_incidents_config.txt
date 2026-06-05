@@ -89,11 +89,6 @@ BAT0_HI           = DEFAULT	# nur sinnvoll als folgefehler von alternator / avio
 BAT1_LO           = DEFAULT
 BAT1_HI           = DEFAULT
 
-AVIONICS_FAN      = DEFAULT	# ist XP failures unbekannt, keine Wirkung in C172; aus script entfernen
-INVERTER_1        = DEFAULT	# bei piston fast nie. aus dem script entfernen
-INVERTER_2        = DEFAULT	# bei piston fast nie. aus dem script entfernen
-
-
 # ---- LIGHTS ------------------------------------------------
 LITES_BEACON      = DEFAULT
 LITES_NAV         = DEFAULT
@@ -149,10 +144,6 @@ MAGNETOMETER      = DEFAULT	# G1000 only
 WXR_RADAR         = DEFAULT
 NAVCOM1           = DEFAULT	# n/a with GPS-device
 NAVCOM2           = DEFAULT	# n/a with GPS-device
-NAV1              = DEFAULT	# aus script entfernen
-NAV2              = DEFAULT	# aus script entfernen
-COM1              = DEFAULT	# aus script entfernen
-COM2              = DEFAULT	# aus script entfernen
 ADF1              = DEFAULT
 GPS               = DEFAULT	# position will freeze
 DME               = DEFAULT
@@ -199,9 +190,9 @@ GEAR_ACT          = DEFAULT
 GEAR_RET_1        = DEFAULT
 GEAR_RET_2        = DEFAULT
 GEAR_RET_3        = DEFAULT
-GEAR_COL_1        = DEFAULT	# there must be conditions: on ground, speed > x
-GEAR_COL_2        = DEFAULT	# there must be conditions: on ground, speed > x
-GEAR_COL_3        = DEFAULT	# there must be conditions: on ground, speed > x
+GEAR_COL_1        = DEFAULT
+GEAR_COL_2        = DEFAULT
+GEAR_COL_3        = DEFAULT
 TIRE_1            = DEFAULT
 TIRE_2            = DEFAULT
 TIRE_3            = DEFAULT
@@ -220,6 +211,9 @@ FLAP_ACT_R        = DEFAULT	# flap will lock in current position
 ELV_TRIM_RUN      = DEFAULT	# has effect on electrcal trim only
 AIL_TRIM_RUN      = DEFAULT	# has effect on electrcal trim only
 RUD_TRIM_RUN      = DEFAULT	# has effect on electrcal trim only
+TRIM_ELV          = DEFAULT	# follow-up after trim runaway fix: system dead
+TRIM_AIL          = DEFAULT
+TRIM_RUD          = DEFAULT
 
 
 # ============================================================
@@ -257,7 +251,6 @@ GEN1_LO           = OFF
 GEN1_HI           = OFF
 BAT1_LO           = OFF
 BAT1_HI           = OFF
-INVERTER_2        = OFF
 
 # ---- SYSTEMS -----------------------------------------------
 PITOT_HEAT_2      = OFF
@@ -272,10 +265,6 @@ VACUUM_2          = OFF
 # ---- INSTRUMENTS -------------------------------------------
 NAVCOM1           = OFF
 NAVCOM2           = OFF
-NAV1              = OFF
-NAV2              = OFF
-COM1              = OFF
-COM2              = OFF
 RPM_IND_2         = OFF
 MP_IND_1          = OFF
 MP_IND_2          = OFF
@@ -300,14 +289,13 @@ ICE_DETECT        = OFF
 # ---- GEAR --------------------------------------------------
 GEAR_IND          = OFF
 GEAR_ACT          = OFF
-GEAR_RET_1        = OFF
-GEAR_RET_2        = OFF
-GEAR_RET_3        = OFF
 
 # ---- CONTROLS ----------------------------------------------
 ELV_TRIM_RUN      = OFF
 AIL_TRIM_RUN      = OFF
 RUD_TRIM_RUN      = OFF
+TRIM_AIL          = OFF
+TRIM_RUD          = OFF
 
 
 # ============================================================
@@ -338,7 +326,6 @@ AIRFLOW_ENG2      = OFF
 # ---- ELECTRICAL --------------------------------------------
 ELEC_BUS2         = OFF
 GENERATOR_2       = OFF
-INVERTER_2        = OFF
 
 # ---- LIGHTS ------------------------------------------------
 LITES_BEACON      = OFF
@@ -365,10 +352,6 @@ G430_NAV1         = OFF
 G430_NAV2         = OFF
 NAVCOM1           = OFF
 NAVCOM2           = OFF
-NAV1              = OFF
-NAV2              = OFF
-COM1              = OFF
-COM2              = OFF
 RPM_IND_2         = OFF
 MP_IND_2          = OFF
 CHT_IND_2         = OFF
@@ -392,9 +375,6 @@ GEAR_ACT          = OFF
 GEAR_RET_1        = OFF
 GEAR_RET_2        = OFF
 GEAR_RET_3        = OFF
-GEAR_COL_1        = OFF
-GEAR_COL_2        = OFF
-GEAR_COL_3        = OFF
 
 # ============================================================
 #  BE58 — SimCoders Baron 58 REP
@@ -455,8 +435,6 @@ PROP_COARSE_2     = OFF
 # all electrical failures off, managed by REP
 ELEC_BUS1         = OFF
 ELEC_BUS2         = OFF
-INVERTER_1        = OFF
-INVERTER_2        = OFF
 GENERATOR_1       = OFF
 GENERATOR_2       = OFF
 BATTERY_1         = OFF
@@ -469,7 +447,6 @@ BAT0_LO           = OFF
 BAT0_HI           = OFF
 BAT1_LO           = OFF
 BAT1_HI           = OFF
-AVIONICS_FAN      = OFF
 
 
 # ---- LIGHTS ------------------------------------------------
@@ -510,10 +487,6 @@ MAGNETOMETER      = OFF	# G1000 only
 WXR_RADAR         = OFF	# no effect
 NAVCOM1           = OFF	# redundand GPS-device
 NAVCOM2           = OFF	# redundand GPS-device
-NAV1              = OFF	# redundand GPS-device
-NAV2              = OFF	# redundand GPS-device
-COM1              = OFF	# redundand GPS-device
-COM2              = OFF	# redundand GPS-device
 RPM_IND_1         = OFF	# no effect
 RPM_IND_2         = OFF	# no effect
 MP_IND_1          = OFF	# no effect
@@ -562,3 +535,5 @@ TIRE_5            = OFF	# n/a
 
 AIL_TRIM_RUN      = OFF	#n/a, on B58 not electrical
 RUD_TRIM_RUN      = OFF	#n/a, on B58 not electrical
+TRIM_AIL          = OFF
+TRIM_RUD          = OFF
