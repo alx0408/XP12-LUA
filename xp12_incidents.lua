@@ -51,11 +51,11 @@ end
 
 -- ---- Fix conditions ----------------------------------------
 local function smoke_fixable()
-    local bat1  = get("sim/cockpit2/electrical/battery_on[0]")
-    local avion = get("sim/cockpit2/switches/avionics_power_on")
-    local gen1  = get("sim/cockpit2/electrical/generator_on[0]")
-    if bat1 == nil or avion == nil or gen1 == nil then return false end
-    return bat1 == 0 and avion == 0 and gen1 == 0
+    local bat   = get("sim/cockpit/electrical/battery_on")
+    local avion = get("sim/cockpit/electrical/avionic_on")
+    local gen1  = get("sim/cockpit/electrical/generator_on[0]")
+    if bat == nil or avion == nil or gen1 == nil then return false end
+    return bat == 0 and avion == 0 and gen1 == 0
 end
 
 local function trim_fixable()
