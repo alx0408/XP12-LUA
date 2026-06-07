@@ -876,3 +876,54 @@ sim/operation/failures/rel_ice_prop_heat6	int	y	failure_enum	Prop Heat, engine 6
 sim/operation/failures/rel_ice_prop_heat7	int	y	failure_enum	Prop Heat, engine 7	
 sim/operation/failures/rel_ice_prop_heat8	int	y	failure_enum	Prop Heat, engine 8
 
+
+
+NOT YET IN REDUCED LIST
+sim/flightmodel/failures/frm_ice	float	y	ratio	Ratio of icing on wings/airframe - left wing	
+sim/flightmodel/failures/frm_ice2	float	y	ratio	Ratio of icing on wings/airframe - right wing	
+sim/flightmodel/failures/tail_ice	float	y	ratio	Ratio of icing on tailplane (hstab and vstab) - left side	
+sim/flightmodel/failures/tail_ice2	float	y	ratio	Ratio of icing on tailplane (hstab and vstab) - right side	
+sim/flightmodel/failures/pitot_ice	float	y	ratio	Ratio of icing on pitot tube -pilot	
+sim/flightmodel/failures/pitot_ice2	float	y	ratio	Ratio of icing on pitot tube -copilot	
+sim/flightmodel/failures/pitot_ice_stby	float	y	ratio	Ratio of icing on pitot tube -standby instruments	
+sim/flightmodel/failures/prop_ice	float	y	ratio	Ratio of icing on the prop - first prop	
+sim/flightmodel/failures/stat_ice	float	y	ratio	Ratio of icing on the static port - pilot side	
+sim/flightmodel/failures/stat_ice2	float	y	ratio	Ratio of icing on the static port - copilot side	
+sim/flightmodel/failures/stat_ice_stby	float	y	ratio	Ratio of icing on the static port - standby instruments	
+sim/flightmodel/failures/inlet_ice	float	y	ratio	Ratio of icing on the air inlets - first engine	
+sim/flightmodel/failures/prop_ice_per_engine	float[16]	y	ratio	Ratio of icing on the prop - array access to all props.	
+sim/flightmodel/failures/inlet_ice_per_engine	float[16]	y	ratio	Ratio of icing on the air inlets - array access to all engines.	
+sim/flightmodel/failures/window_ice	float	y	ratio	Ratio of icing on the pilot windshield	
+sim/flightmodel/failures/window_ice_per_window	float[4]	y	ratio	Ratio of icing on the windshields and side windows	
+sim/flightmodel/failures/window_ice_unheated	float	y	ratio	Ratio of icing on glass that is not heated	
+sim/flightmodel/failures/window_ice_added_delta	float	y	ratio	Additional ice to add from plugins for custom icing scenarios	
+sim/flightmodel/failures/ice_delta	float	n	???	The current ice accumulation per second, or negative when ice is being removed	
+sim/flightmodel/failures/aoa_ice	float	y	ratio	Ratio of icing on alpha vane - pilot AoA	
+sim/flightmodel/failures/aoa_ice2	float	y	ratio	Ratio of icing on alpha vane - copilot AoA	
+sim/flightmodel/failures/aoa_ice3	float	y	ratio	Ratio of icing on alpha vane - stby AoA	
+sim/flightmodel/failures/tat_ice	float	y	ratio	Ratio of icing on TAT probe - pilot TAT	
+sim/flightmodel/failures/tat_ice2	float	y	ratio	Ratio of icing on TAT probe - copilot TAT	
+sim/flightmodel/failures/tat_ice3	float	y	ratio	Ratio of icing on TAT probe - stby TAT	
+sim/flightmodel/failures/stallwarning	int	y	???	Stall Warning	
+sim/flightmodel/failures/over_g	int	y	
+sim/flightmodel/failures/over_vne	int	y	
+sim/flightmodel/failures/over_vfe	int	y	
+sim/flightmodel/failures/over_vle	int	y	
+sim/flightmodel/failures/onground_any	int	y	???	User Aircraft is on the ground when this is set to 1	
+sim/flightmodel/failures/onground_all	int	y	
+sim/flightmodel/failures/smoking	int	y	boolean	Is emitting smoke, including airshow smoke	
+sim/flightmodel/failures/lo_rotor_warning	int	y	???	Lo Rotor Warning	
+sim/operation/failures/hydraulic_pressure_ratio	float	n	any	Hydraulic pressure, Plane Maker units - use sim/cockpit2/hydraulics/indicators/hydraulic_pressure_1	REPLACED - Use the replacement instead.
+sim/operation/failures/hydraulic_pressure_ratio2	float	n	any	Hydraulic pressure, Plane Maker units - use sim/cockpit2/hydraulics/indicators/hydraulic_pressure_2	REPLACED - Use the replacement instead.
+sim/operation/failures/hydraulic_pressure_ratio_3	float	n	any	Hydraulic pressure, Plane Maker units - use sim/cockpit2/hydraulics/indicators/hydraulic_pressure_3	REPLACED - Use the replacement instead.
+sim/operation/failures/enable_random_falures	int	y	boolean	Use enable_random_failures	REPLACED - Use the replacement instead.
+sim/operation/failures/enable_random_failures	int	y	boolean	Enable random failures basde on mean time between failures	
+sim/operation/failures/mean_time_between_failure_hrs	float	y	hours	Mean time between failures	
+sim/operation/failures/rel_fc_rud_L	int	y	failure_enum	Renamed - use rel_rud_L	REPLACED - Use the replacement instead.
+sim/operation/failures/rel_fc_rud_R	int	y	failure_enum	Renamed - use rel_rud_R	REPLACED - Use the replacement instead.
+sim/operation/failures/rel_fc_ail_L	int	y	failure_enum	Renamed - use rel_ail_L	REPLACED - Use the replacement instead.
+sim/operation/failures/rel_fc_ail_R	int	y	failure_enum	Renamed - use rel_ail_R	REPLACED - Use the replacement instead.
+sim/operation/failures/rel_fc_elv_U	int	y	failure_enum	Renamed - use rel_elv_U	REPLACED - Use the replacement instead.
+sim/operation/failures/rel_fc_elv_D	int	y	failure_enum	Renamed - use rel_elv_D	REPLACED - Use the replacement instead.
+sim/operation/failures/rel_antice	int	y	Read:	The least failed state of all de-ice systems except the detector. Write: Set the failed state of all de-ice systems except the detector.	DEPRECATED - DO NOT USE!!!
+sim/operation/failures/rel_ice_surf_boot	int	y	failure_enum	Surface Boot - Deprecated - Do Not Use	DEPRECATED - DO NOT USE!!!

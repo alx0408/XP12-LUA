@@ -28,50 +28,52 @@ DEFAULT_MTBF = 10000
 # ---- ENVIRONMENT -------------------------------------------
 VASI              = DEFAULT	# turns off papi / vasi
 RWY_LIGHTS        = DEFAULT	# TRY INFLIGHT
-SMOKE             = DEFAULT	# there needs to be a fix; i.e. electrics OFF + window or door open
-BIRD_RANDOM       = DEFAULT	# bei single engine am besten OFF
-BIRD_ENG1         = DEFAULT
-BIRD_ENG2         = DEFAULT	# bei single engine am besten OFF
-FUEL_CAP          = DEFAULT	# affects both tanks with rapid loss of fuel; there need to be a fix
-FUEL_LEAK         = DEFAULT	# affects both tanks with rapid loss of fuel; there need to be a fix
-FUEL_WATER        = DEFAULT	# does not work on B58
-FUEL_TYPE         = OFF		# does not work on B58
-DOOR_OPEN         = DEFAULT	# does not work on B58
+SMOKE             = DEFAULT	# fix: battaries & generators OFF, Avionins Master OFF; one culprit will remain ...; no fix, if smoke induced by engine fire.
+BIRD_RANDOM       = DEFAULT
+BIRD_ENG1         = DEFAULT # to be deleted
+BIRD_ENG2         = DEFAULT # to be deleted
+FUEL_CAP          = DEFAULT	# custom drain routine: one side, high→decreasing rate, airborne only
+FUEL_LEAK         = DEFAULT	# custom drain routine: random side(s), low→increasing rate, memory-persistent
+FUEL_WATER        = OFF     # consider delete; seems to have no impact
+FUEL_TYPE         = OFF		# consider delete; seems to have no impact
+DOOR_OPEN         = DEFAULT	# custom routine: opens one unlatched door physically
+DOOR_1            = DEFAULT	# pilot door (door_open[0]); latch guard: open+close on ground+engine-off
+DOOR_2            = DEFAULT	# copilot door (door_open[1]); latch guard: same
 
 
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_1        = DEFAULT
-ENG_FAIL_2        = DEFAULT	# bei single engine am besten OFF
+ENG_FAIL_2        = DEFAULT
 ENG_FIRE_1        = DEFAULT
-ENG_FIRE_2        = DEFAULT	# bei single engine am besten OFF
+ENG_FIRE_2        = DEFAULT
 STARTER_1         = DEFAULT
-STARTER_2         = DEFAULT	# bei single engine am besten OFF
+STARTER_2         = DEFAULT
 MAG_L1            = DEFAULT
-MAG_L2            = DEFAULT	# bei single engine am besten OFF
+MAG_L2            = DEFAULT
 MAG_R1            = DEFAULT
-MAG_R2            = DEFAULT	# bei single engine am besten OFF
+MAG_R2            = DEFAULT
 FUEL_PUMP_LO_1    = DEFAULT	# wahrscheinlich: Pumpe läuft, erzeugt aber nur geringen Druck
-FUEL_PUMP_LO_2    = DEFAULT	# bei single engine am besten OFF
+FUEL_PUMP_LO_2    = DEFAULT
 FUEL_PUMP_1       = DEFAULT	# Mechanische Kraftstoffpumpe
-FUEL_PUMP_2       = DEFAULT	# bei single engine am besten OFF
+FUEL_PUMP_2       = DEFAULT
 ELE_FUEL_PMP_1    = DEFAULT
-ELE_FUEL_PMP_2    = DEFAULT	# bei single engine am besten OFF
+ELE_FUEL_PMP_2    = DEFAULT
 FUEL_FLOW_1       = DEFAULT	# Vermutung: Schwankungen Treibstoffzufuhr
-FUEL_FLOW_2       = DEFAULT	# bei single engine am besten OFF
+FUEL_FLOW_2       = DEFAULT
 FUEL_BLOCK_1      = DEFAULT	# Vermutung: Kraftstoff-Filter blocked / warum in XP unter "Welt"?
 FUEL_BLOCK_2      = DEFAULT
 OIL_PUMP_1        = DEFAULT
-OIL_PUMP_2        = DEFAULT	# bei single engine am besten OFF
+OIL_PUMP_2        = DEFAULT
 OIL_PRESS_LO_1    = DEFAULT
-OIL_PRESS_LO_2    = DEFAULT	# bei single engine am besten OFF
+OIL_PRESS_LO_2    = DEFAULT
 AIRFLOW_ENG1      = DEFAULT
-AIRFLOW_ENG2      = DEFAULT	# bei single engine am besten OFF
+AIRFLOW_ENG2      = DEFAULT
 
 # ---- PROPELLERS (nur constant speed prop) -------------------------
 PROP_FINE_1       = DEFAULT
-PROP_FINE_2       = DEFAULT	# bei single engine am besten OFF
+PROP_FINE_2       = DEFAULT
 PROP_COARSE_1     = DEFAULT
-PROP_COARSE_2     = DEFAULT	# bei single engine am besten OFF
+PROP_COARSE_2     = DEFAULT
 
 # ---- ELECTRICAL --------------------------------------------
 ELEC_BUS1         = DEFAULT
@@ -85,7 +87,7 @@ GEN0_HI           = DEFAULT
 GEN1_LO           = DEFAULT
 GEN1_HI           = DEFAULT
 BAT0_LO           = DEFAULT
-BAT0_HI           = DEFAULT	# nur sinnvoll als folgefehler von alternator / avionics laufem auch mit 32 V / kann ggf. raus.
+BAT0_HI           = DEFAULT	# nur sinnvoll als folgefehler von alternator / avionics laufen auch mit 32 V / kann ggf. raus.
 BAT1_LO           = DEFAULT
 BAT1_HI           = DEFAULT
 
@@ -99,7 +101,7 @@ LITES_INST        = DEFAULT
 LITES_COCKPIT     = DEFAULT
 
 # ---- AUTOPILOT ---------------------------------------------
-AP_COMPUTER       = DEFAULT	# AP turns off; no indicators; no chime!
+AP_COMPUTER       = DEFAULT	# AP turns off, no indicators; no chime!
 AP_RUNAWAY        = DEFAULT	# AP out of control
 AP_SERVOS         = DEFAULT	# chime sounds, indicators stay on, AP will not work
 AP_SERVO_ELEV     = DEFAULT	# elevator servo restricted; altitude will vary
@@ -129,8 +131,8 @@ ALT_COPILOT       = DEFAULT
 AHZ_COPILOT       = DEFAULT	# does not work on B58
 G430_GPS1         = DEFAULT	# device will fail completely
 G430_GPS2         = DEFAULT	# device will fail completely
-G430_NAV1         = DEFAULT	# only COM und NAV will fail (?); does not work on B58
-G430_NAV2         = DEFAULT	# only COM und NAV will fail (?)
+G430_NAV1         = DEFAULT	# only COM und NAV will fail (?); does not work on B58; consider delete
+G430_NAV2         = DEFAULT	# only COM und NAV will fail (?); consider delete
 G_ASI             = DEFAULT	# G1000 only
 G_ALT             = DEFAULT	# G1000 only
 G_VVI             = DEFAULT	# G1000 only
@@ -145,10 +147,7 @@ WXR_RADAR         = DEFAULT	# does not work on B58
 NAVCOM1           = DEFAULT	# n/a with GPS-device
 NAVCOM2           = DEFAULT	# n/a with GPS-device
 ADF1              = DEFAULT
-GPS               = DEFAULT	# position will freeze
 DME               = DEFAULT
-LOC               = DEFAULT	# LOC will red-flag
-GLS               = DEFAULT	# GS will red-flag
 XPNDR             = DEFAULT
 MARKER            = DEFAULT	# TRY INFLIGHT
 RPM_IND_1         = DEFAULT	# does not work on B58
@@ -171,7 +170,7 @@ STALL_WARN        = DEFAULT	# TRY INFLIGHT
 GEAR_WARN         = DEFAULT
 PROP_SYNC         = DEFAULT	# single engine off; fails the instrument, not the system
 
-# ---- SENSORS -----------------------------------------------
+# ---- SENSORS / ANTENNAS  -----------------------------------------------
 PITOT             = DEFAULT	# does not work on B58
 PITOT_2           = DEFAULT	# does not work on B58
 PITOT_STBY        = DEFAULT
@@ -183,6 +182,10 @@ STATIC_ERR_2      = DEFAULT
 OAT               = DEFAULT
 ICE_DETECT        = DEFAULT	# for TKS only
 FUEL_QTY          = DEFAULT	# dt. "TreibstoffGÜTEsensor"; richtig: quantity
+LOC               = DEFAULT	# LOC will red-flag
+GLS               = DEFAULT	# GS will red-flag
+GPS               = DEFAULT	# position will freeze
+# maybe return com1/2 nav 1/2 again -> antennas / check in xp
 
 # ---- GEAR --------------------------------------------------
 GEAR_IND          = DEFAULT	# does not work on B58
@@ -409,11 +412,8 @@ ICAO = BE58
 # bird strike will damage engine without fire
 BIRD_ENG1         = OFF
 BIRD_ENG2         = OFF
-FUEL_CAP          = OFF	# affects both tanks with rapid loss of fuel; there need to be a fix
-FUEL_LEAK         = OFF	# affects both tanks with rapid loss of fuel; there need to be a fix
 FUEL_WATER        = OFF	# does not work on B58
 FUEL_TYPE         = OFF	# does not work on B58
-DOOR_OPEN         = OFF	# does not work on B58
 
 # ---- ENGINES -----------------------------------------------
 # all engines failures off, managed by REP
