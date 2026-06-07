@@ -27,18 +27,14 @@ DEFAULT_MTBF = 10000
 
 # ---- ENVIRONMENT -------------------------------------------
 VASI              = DEFAULT	# turns off papi / vasi
-RWY_LIGHTS        = DEFAULT	# TRY INFLIGHT
-SMOKE             = DEFAULT	# fix: battaries & generators OFF, Avionins Master OFF; one culprit will remain ...; no fix, if smoke induced by engine fire.
-BIRD_RANDOM       = DEFAULT
-BIRD_ENG1         = DEFAULT # to be deleted
-BIRD_ENG2         = DEFAULT # to be deleted
-FUEL_CAP          = DEFAULT	# custom drain routine: one side, high→decreasing rate, airborne only
-FUEL_LEAK         = DEFAULT	# custom drain routine: random side(s), low→increasing rate, memory-persistent
-FUEL_WATER        = OFF     # consider delete; seems to have no impact
-FUEL_TYPE         = OFF		# consider delete; seems to have no impact
-DOOR_OPEN         = DEFAULT	# custom routine: opens one unlatched door physically
-DOOR_1            = DEFAULT	# pilot door (door_open[0]); latch guard: open+close on ground+engine-off
-DOOR_2            = DEFAULT	# copilot door (door_open[1]); latch guard: same
+RWY_LIGHTS        = DEFAULT	# turns off rwy light, can not be reactivated by (xp native) "rwy light high" command
+SMOKE             = DEFAULT	# fix: BATs & GENs OFF, Avionions OFF; one culprit will remain ...(?); no fix, if smoke by engine fire.
+BIRD_ENG1         = DEFAULT	# airborne only
+BIRD_ENG2         = DEFAULT	# airborne only; with one engine only, birds will pass nearby...
+DOOR_OPEN         = DEFAULT	# custom failure: opens one unlatched door physically; guard: close = LATCH
+FUEL_CAP          = DEFAULT	# custom failure: one side, high→decreasing rate, airborne only; does not work on B58
+FUEL_WATER        = DEFAULT     # engine will might run for a few seconds but it will not start  ...; on ground and engine off only; no cure; does not work on B58
+FUEL_TYPE         = DEFAULT	# engine will flame out after a while; prop not turning with starter anymore; on ground and engine off only; no cure
 
 
 # ---- ENGINES -----------------------------------------------
@@ -62,6 +58,7 @@ FUEL_FLOW_1       = DEFAULT	# Vermutung: Schwankungen Treibstoffzufuhr
 FUEL_FLOW_2       = DEFAULT
 FUEL_BLOCK_1      = DEFAULT	# Vermutung: Kraftstoff-Filter blocked / warum in XP unter "Welt"?
 FUEL_BLOCK_2      = DEFAULT
+FUEL_LEAK         = DEFAULT	# custom failure: engine must be running; random side(s), low→increasing rate
 OIL_PUMP_1        = DEFAULT
 OIL_PUMP_2        = DEFAULT
 OIL_PRESS_LO_1    = DEFAULT
@@ -106,7 +103,7 @@ AP_RUNAWAY        = DEFAULT	# AP out of control
 AP_SERVOS         = DEFAULT	# chime sounds, indicators stay on, AP will not work
 AP_SERVO_ELEV     = DEFAULT	# elevator servo restricted; altitude will vary
 AP_SERVO_AILN     = DEFAULT	# aileron servo restricted; will react rarely
-AP_SERVO_RUDD     = DEFAULT	# probaly same effect; may have effect on yaw damper?
+AP_SERVO_RUDD     = DEFAULT	# yaw damper restricted
 
 # ---- SYSTEMS -----------------------------------------------
 PITOT_HEAT_1      = DEFAULT
@@ -162,11 +159,12 @@ FF_IND_1          = DEFAULT	# does not work on B58
 FF_IND_2          = DEFAULT	# does not work on B58
 FUEL_P_IND_1      = DEFAULT	# does not work on B58
 FUEL_P_IND_2      = DEFAULT	# does not work on B58
+FUEL_QTY          = DEFAULT	# dt. "TreibstoffGÜTEsensor"; richtig: quantity; does not work on B58
 OIL_P_IND_1       = DEFAULT	# does not work on B58
 OIL_P_IND_2       = DEFAULT	# does not work on B58
 OIL_T_IND_1       = DEFAULT	# does not work on B58
 OIL_T_IND_2       = DEFAULT	# does not work on B58
-STALL_WARN        = DEFAULT	# TRY INFLIGHT
+STALL_WARN        = DEFAULT	# TRY INFLIGHT on B58
 GEAR_WARN         = DEFAULT
 PROP_SYNC         = DEFAULT	# single engine off; fails the instrument, not the system
 
@@ -181,7 +179,6 @@ STATIC_ERR_1      = DEFAULT
 STATIC_ERR_2      = DEFAULT
 OAT               = DEFAULT
 ICE_DETECT        = DEFAULT	# for TKS only
-FUEL_QTY          = DEFAULT	# dt. "TreibstoffGÜTEsensor"; richtig: quantity
 LOC               = DEFAULT	# LOC will red-flag
 GLS               = DEFAULT	# GS will red-flag
 GPS               = DEFAULT	# position will freeze
@@ -227,8 +224,7 @@ TRIM_RUD          = DEFAULT
 ICAO = C172
 
 # ---- ENVIRONMENT -------------------------------------------
-BIRD_RANDOM       = OFF
-BIRD_ENG2         = OFF
+# BIRD_ENG2         = NOT OFF; only birds nearby …
 
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_2        = OFF
@@ -329,8 +325,7 @@ TRIM_RUD          = OFF
 ICAO = SR22
 
 # ---- ENVIRONMENT -------------------------------------------
-BIRD_RANDOM       = OFF
-BIRD_ENG2         = OFF
+# BIRD_ENG2         = NOT OFF; only birds nearby …
 
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_2        = OFF
@@ -409,11 +404,10 @@ GEAR_RET_3        = OFF
 ICAO = BE58
 
 # ---- ENVIRONMENT -------------------------------------------
-# bird strike will damage engine without fire
-BIRD_ENG1         = OFF
-BIRD_ENG2         = OFF
-FUEL_WATER        = OFF	# does not work on B58
-FUEL_TYPE         = OFF	# does not work on B58
+# bird strike may damage engine with or without fire
+FUEL_WATER        = OFF	# no effect
+FUEL_TYPE         = OFF	# no effect
+
 
 # ---- ENGINES -----------------------------------------------
 # all engines failures off, managed by REP
@@ -521,6 +515,7 @@ FF_IND_1          = OFF	# no effect
 FF_IND_2          = OFF	# no effect
 FUEL_P_IND_1      = OFF	# no effect
 FUEL_P_IND_2      = OFF	# no effect
+FUEL_QTY          = OFF	# no effect
 OIL_P_IND_1       = OFF	# no effect
 OIL_P_IND_2       = OFF	# no effect
 OIL_T_IND_1       = OFF	# no effect

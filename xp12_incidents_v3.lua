@@ -54,10 +54,10 @@ dataref("dr_acf_icao",     "sim/aircraft/view/acf_ICAO",                 "readon
 dataref("dr_elec_trim_on", "sim/cockpit2/autopilot/electric_trim_on",    "readonly")
 dataref("dr_bat_on",       "sim/cockpit/electrical/battery_on",          "readonly")
 dataref("dr_avion",        "sim/cockpit/electrical/avionics_on",         "readonly")
-dataref("dr_gen_warn",     "sim/cockpit/warnings/annunciators/generator","readonly")
 
 local _ref_on_ground = XPLMFindDataRef("sim/flightmodel/failures/onground_any")
 local _ref_engn      = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")
+local _ref_gen_on    = XPLMFindDataRef("sim/cockpit/electrical/generator_on")
 local _ref_volts     = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed    = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_view_ext  = XPLMFindDataRef("sim/graphics/view/view_is_external")
@@ -109,9 +109,15 @@ local function electrical_on()
     return v ~= nil and (v[0] or 0) > 1
 end
 
+local function read_gen_on()
+    if not _ref_gen_on then return 0 end
+    local v = XPLMGetDatavi(_ref_gen_on, 0, 1)
+    return (v and v[0]) or 0
+end
+
 -- ---- Fix conditions ----------------------------------------
 local function smoke_fixable()
-    return dr_bat_on == 0 and dr_avion == 0 and dr_gen_warn ~= 0
+    return not electrical_on()
 end
 
 local function trim_fixable()
@@ -162,7 +168,7 @@ local function smoke_on_fix(f)
     end
     smoke_prev_bat   = dr_bat_on
     smoke_prev_avion = dr_avion
-    smoke_prev_gen   = dr_gen_warn
+    smoke_prev_gen   = read_gen_on()
     save_memory()
 end
 
@@ -387,7 +393,7 @@ local function load_memory()
                         smoke_culprit    = val
                         smoke_prev_bat   = dr_bat_on
                         smoke_prev_avion = dr_avion
-                        smoke_prev_gen   = dr_gen_warn
+                        smoke_prev_gen   = read_gen_on()
                     elseif key == "FUEL_CAP_T1" then
                         fuel_cap_mem_l = tonumber(val)
                     elseif key == "FUEL_CAP_T2" then
@@ -650,29 +656,21 @@ local function stop_door_open(num)
     if not door_routine.fail_1 and not door_routine.fail_2 then
         set_dr(find_failure("DOOR_OPEN"), 0)
     end
+    inc_trigger_popup("DOOR " .. num .. " LATCHED")
     save_memory()
 end
 
--- Dice roll among ALL available doors (manual trigger — ignores latch).
-local function door_trigger_any()
-    local avail = {}
-    if door_available(1) then table.insert(avail, 1) end
-    if door_available(2) then table.insert(avail, 2) end
-    if #avail == 0 then return end
-    start_door_open(avail[math.random(#avail)])
-end
 
--- Dice roll among UNLATCHED available doors (auto trigger — respects guards).
+-- Dice roll among ALL available (non-open) doors; latch check after selection.
+-- If the selected door is latched: nothing opens, nothing shows in status.
 local function door_trigger_unlatched()
-    local eligible = {}
-    if door_available(1) and not door_routine.latched_1 and not door_routine.open_1 then
-        table.insert(eligible, 1)
-    end
-    if door_available(2) and not door_routine.latched_2 and not door_routine.open_2 then
-        table.insert(eligible, 2)
-    end
-    if #eligible == 0 then return end
-    start_door_open(eligible[math.random(#eligible)])
+    local avail = {}
+    if door_available(1) and not door_routine.open_1 then table.insert(avail, 1) end
+    if door_available(2) and not door_routine.open_2 then table.insert(avail, 2) end
+    if #avail == 0 then return end
+    local n = avail[math.random(#avail)]
+    if (n == 1 and door_routine.latched_1) or (n == 2 and door_routine.latched_2) then return end
+    start_door_open(n)
 end
 
 local function door_has_unlatched()
@@ -694,12 +692,11 @@ function incidents_door_tick()
             door_routine.open_1    = true
             save_memory()
         elseif door_routine.open_1 then
-            door_routine.open_1 = false
-            door_routine.fail_1 = false
-            if not airborne() and not engine_on() then
-                door_routine.latched_1 = true
-            end
+            door_routine.open_1    = false
+            door_routine.fail_1    = false
+            door_routine.latched_1 = true
             if not door_routine.fail_2 then set_dr(find_failure("DOOR_OPEN"), 0) end
+            inc_trigger_popup("DOOR 1 LATCHED")
             save_memory()
         end
         door_routine.prev_1 = cur_1
@@ -711,12 +708,11 @@ function incidents_door_tick()
             door_routine.open_2    = true
             save_memory()
         elseif door_routine.open_2 then
-            door_routine.open_2 = false
-            door_routine.fail_2 = false
-            if not airborne() and not engine_on() then
-                door_routine.latched_2 = true
-            end
+            door_routine.open_2    = false
+            door_routine.fail_2    = false
+            door_routine.latched_2 = true
             if not door_routine.fail_1 then set_dr(find_failure("DOOR_OPEN"), 0) end
+            inc_trigger_popup("DOOR 2 LATCHED")
             save_memory()
         end
         door_routine.prev_2 = cur_2
@@ -758,20 +754,17 @@ def("SMOKE",       "sim/operation/failures/rel_smoke_cpit",       "Smoke",      
 def("BIRD_RANDOM", "sim/operation/failures/rel_bird_strike",      "Bird/Random", "airborne", true)
 def("BIRD_ENG1",   "sim/operation/failures/rel_bird_strike_eng1", "Bird/Eng1",   "airborne", true)
 def("BIRD_ENG2",   "sim/operation/failures/rel_bird_strike_eng2", "Bird/Eng2",   "airborne", true)
--- FUEL_CAP / FUEL_LEAK: no DataRef=6 — custom routines handle these.
--- no_memory=true for both; FUEL_LEAK state is written by save_memory separately.
--- FUEL_CAP has condition=nil so manual trigger always works on ground/engine-off.
--- The airborne guard lives only in the automatic tick paths below.
-def("FUEL_CAP",    "sim/operation/failures/rel_fuelcap",    "Fuel Cap",  nil,        true)
-def("FUEL_LEAK",   "sim/operation/failures/rel_fuel_leak",  "Fuel Leak", nil,        true)
-def("FUEL_WATER",  "sim/operation/failures/rel_fuel_water", "Fuel Water", nil,       true)
-def("FUEL_TYPE",   "sim/operation/failures/rel_fuel_type",  "Fuel Type",  nil,       true)
 def("DOOR_OPEN",   "sim/operation/failures/rel_door_open",  "Door",       nil,       true)
 -- DOOR_1 / DOOR_2: virtual failures (dr=nil) — no XP failure DataRef.
 -- Trigger opens the physical door DataRef; latch guard in door_routine.
 -- no_memory=true: door-open state read from sim at startup; latch saved separately.
 def("DOOR_1",      nil,                                     "Door 1",     nil,       true)
 def("DOOR_2",      nil,                                     "Door 2",     nil,       true)
+-- FUEL_CAP: no DataRef=6 — custom drain routine handles it.
+-- no_memory=true; airborne condition + fuel_cap_check_done guard enforced when conditions_enforced=true.
+def("FUEL_CAP",    "sim/operation/failures/rel_fuelcap",    "Fuel Cap",  "airborne",  true)
+def("FUEL_WATER",  "sim/operation/failures/rel_fuel_water", "Fuel Water", "ground_engine_off", true)
+def("FUEL_TYPE",   "sim/operation/failures/rel_fuel_type",  "Fuel Type",  "ground_engine_off", true)
 
 -- ---- ENGINES -----------------------------------------------
 def("ENG_FAIL_1",     "sim/operation/failures/rel_engfai0",          "Eng Fail 1",   "engine")
@@ -796,6 +789,7 @@ def("FUEL_FLOW_1",    "sim/operation/failures/rel_fuelfl0",          "Fuel Flow 
 def("FUEL_FLOW_2",    "sim/operation/failures/rel_fuelfl1",          "Fuel Flow 2",  nil)
 def("FUEL_BLOCK_1",   "sim/operation/failures/rel_fuel_block0",      "Fuel Blk 1",   nil)
 def("FUEL_BLOCK_2",   "sim/operation/failures/rel_fuel_block1",      "Fuel Blk 2",   nil)
+def("FUEL_LEAK",   "sim/operation/failures/rel_fuel_leak",  "Fuel Leak", "engine")
 def("OIL_PUMP_1",     "sim/operation/failures/rel_oilpmp0",          "Oil Pump 1",   nil)
 def("OIL_PUMP_2",     "sim/operation/failures/rel_oilpmp1",          "Oil Pump 2",   nil)
 def("OIL_PRESS_LO_1", "sim/operation/failures/rel_eng_lo0",          "OilPressLo 1", nil)
@@ -974,10 +968,11 @@ local function ground_roll()
 end
 
 local function condition_ok(f)
-    if     f.condition == "airborne"       then return airborne()
-    elseif f.condition == "engine"         then return engine_on()
-    elseif f.condition == "engine_or_elec" then return engine_on() or electrical_on()
-    elseif f.condition == "ground_roll"    then return ground_roll()
+    if     f.condition == "airborne"         then return airborne()
+    elseif f.condition == "engine"           then return engine_on()
+    elseif f.condition == "engine_or_elec"   then return engine_on() or electrical_on()
+    elseif f.condition == "ground_roll"      then return ground_roll()
+    elseif f.condition == "ground_engine_off" then return not airborne() and not engine_on()
     end
     return true
 end
@@ -1030,14 +1025,14 @@ local function trigger_failure(f)
         start_fuel_leak(al, ar)
         return
     end
-    -- DOOR_OPEN: manual trigger — dice roll among ALL available doors (no latch check)
+    -- DOOR_OPEN: dice roll among all available doors; latch checked after selection
     if f.key == "DOOR_OPEN" then
-        door_trigger_any()
+        door_trigger_unlatched()
         return
     end
-    -- DOOR_1 / DOOR_2: open specific door (no latch guard — manual is always unconstrained)
-    if f.key == "DOOR_1" then start_door_open(1); return end
-    if f.key == "DOOR_2" then start_door_open(2); return end
+    -- DOOR_1 / DOOR_2: respects latch guard — latched door cannot be opened manually
+    if f.key == "DOOR_1" then if door_routine.latched_1 then return end; start_door_open(1); return end
+    if f.key == "DOOR_2" then if door_routine.latched_2 then return end; start_door_open(2); return end
     set_dr(f, 6)
     save_memory()
     -- cascade followup (e.g. engine fire → smoke)
@@ -1191,29 +1186,6 @@ create_command(
     "incidents_reset_profile()", "", ""
 )
 
-function incidents_reload_config()
-    load_config()
-    build_active_profile()
-    local was_enabled = memory_enabled
-    memory_enabled = false
-    for _, f in ipairs(failures) do
-        local _, flag = get_mtbf(f)
-        if flag == "OFF" then reset_failure(f) end
-    end
-    memory_enabled = was_enabled
-    save_memory()
-    rnd_scheduled = false
-    rnd_fired     = false
-    rnd_target    = nil
-    if type(cfg.mode) == "number" then schedule_random() end
-    inc_trigger_popup("-- CONFIG RELOADED --")
-end
-
-create_command(
-    "FlyWithLua/Incidents/reload_config",
-    "Incidents: reload config",
-    "incidents_reload_config()", "", ""
-)
 
 function incidents_trigger_all()
     -- check fuel and door routine state in addition to DataRef values
@@ -1254,7 +1226,6 @@ create_command(
 
 function incidents_fuelcap_check()
     fuel_cap_check_done = not fuel_cap_check_done
-    inc_trigger_popup(fuel_cap_check_done and "FUEL CAP: CHECKED" or "FUEL CAP: CHECK CLEARED")
 end
 
 create_command(
@@ -1264,24 +1235,56 @@ create_command(
 )
 
 function incidents_latch_all_doors()
-    local any = false
-    if door_available(1) then door_routine.latched_1 = true; any = true end
-    if door_available(2) then door_routine.latched_2 = true; any = true end
-    if any then save_memory() end
-    inc_trigger_popup("DOORS: ALL LATCHED")
+    local all_latched = true
+    if door_available(1) and not door_routine.latched_1 then all_latched = false end
+    if door_available(2) and not door_routine.latched_2 then all_latched = false end
+    if all_latched then
+        if door_available(1) then door_routine.latched_1 = false end
+        if door_available(2) then door_routine.latched_2 = false end
+        save_memory()
+    else
+        if door_available(1) then door_routine.latched_1 = true end
+        if door_available(2) then door_routine.latched_2 = true end
+        local msg = (door_available(1) and door_available(2)) and "DOORS LATCHED"
+                 or door_available(1) and "DOOR 1 LATCHED"
+                 or "DOOR 2 LATCHED"
+        inc_trigger_popup(msg)
+        save_memory()
+    end
 end
 
 create_command(
     "FlyWithLua/Incidents/latch_all_doors",
-    "Incidents: manually latch all available doors",
+    "Incidents: toggle latch all available doors",
     "incidents_latch_all_doors()", "", ""
+)
+
+-- ---- Conditions enforcement toggle ------------------------
+conditions_enforced = true
+
+function incidents_toggle_conditions()
+    conditions_enforced = not conditions_enforced
+end
+
+create_command(
+    "FlyWithLua/Incidents/toggle_conditions",
+    "Incidents: toggle condition enforcement for manual toggles",
+    "incidents_toggle_conditions()", "", ""
 )
 
 -- ---- Per-failure toggle ------------------------------------
 local function make_toggle(f)
     local fn = "incidents_toggle_" .. f.key:lower()
     _G[fn] = function()
-        if failure_is_active(f) then reset_failure(f) else trigger_failure(f) end
+        if failure_is_active(f) then
+            reset_failure(f)
+        else
+            if conditions_enforced then
+                if f.condition and not condition_ok(f) then return end
+                if f.key == "FUEL_CAP" and fuel_cap_check_done then return end
+            end
+            trigger_failure(f)
+        end
     end
     create_command(
         "FlyWithLua/Incidents/" .. f.key:lower(),
@@ -1400,7 +1403,8 @@ function incidents_draw_status()
     local cy  = top
 
     graphics.set_color(1, 1, 1, 1)
-    draw_string_Helvetica_18(x, cy, "[xp12 Incidents V3]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name)
+    local cond_str = conditions_enforced and "COND: ON" or "COND: OFF"
+    draw_string_Helvetica_18(x, cy, "[xp12 Incidents V3]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name .. "  " .. cond_str)
     cy = cy - 20
 
     for _, label in ipairs(active) do
@@ -1474,7 +1478,7 @@ function incidents_tick()
                 rnd_scheduled = false
                 schedule_random()
             elseif f and f.key == "DOOR_OPEN" then
-                -- auto DOOR_OPEN: dice roll only among unlatched doors
+                -- auto DOOR_OPEN: dice roll; latch checked after selection
                 door_trigger_unlatched()
                 rnd_fired = true
             elseif f and condition_ok(f) then
@@ -1565,37 +1569,37 @@ function incidents_culprit_tick()
        and not eng_now
        and _ref_view_ext and XPLMGetDatai(_ref_view_ext) == 1 then
         fuel_cap_check_done = true
-        inc_trigger_popup("FUEL CAP: CHECKED")
+        inc_trigger_popup("TANK CAP CHECKED")
     end
 
     if system_paused then
         smoke_prev_bat   = dr_bat_on
         smoke_prev_avion = dr_avion
-        smoke_prev_gen   = dr_gen_warn
+        smoke_prev_gen   = read_gen_on()
         return
     end
     if not smoke_culprit then
         smoke_prev_bat   = dr_bat_on
         smoke_prev_avion = dr_avion
-        smoke_prev_gen   = dr_gen_warn
+        smoke_prev_gen   = read_gen_on()
         return
     end
     local smoke_f = find_failure("SMOKE")
     if not smoke_f or get_dr(smoke_f) == 6 then
         smoke_prev_bat   = dr_bat_on
         smoke_prev_avion = dr_avion
-        smoke_prev_gen   = dr_gen_warn
+        smoke_prev_gen   = read_gen_on()
         return
     end
 
     local triggered = false
     if smoke_culprit == "bat"   and smoke_prev_bat   ~= nil and smoke_prev_bat   == 0 and dr_bat_on   == 1 then triggered = true end
     if smoke_culprit == "avion" and smoke_prev_avion ~= nil and smoke_prev_avion == 0 and dr_avion    == 1 then triggered = true end
-    if smoke_culprit == "gen"   and smoke_prev_gen   ~= nil and smoke_prev_gen   ~= 0 and dr_gen_warn == 0 then triggered = true end
+    if smoke_culprit == "gen"   and smoke_prev_gen   ~= nil and smoke_prev_gen   == 0 and read_gen_on() == 1 then triggered = true end
 
     smoke_prev_bat   = dr_bat_on
     smoke_prev_avion = dr_avion
-    smoke_prev_gen   = dr_gen_warn
+    smoke_prev_gen   = read_gen_on()
 
     if triggered then trigger_failure(smoke_f) end
 end
