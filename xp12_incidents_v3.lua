@@ -188,7 +188,6 @@ local function parse_failure_entry(val_str)
     if not main then return "DEFAULT" end
     local mtbf
     if     main == "OFF"     then mtbf = "OFF"
-    elseif main == "ON"      then mtbf = "ON"
     elseif main == "DEFAULT" then mtbf = "DEFAULT"
     else
         local n = tonumber(main)
@@ -751,7 +750,6 @@ def("VASI",        "sim/operation/failures/rel_vasi",             "VASI",       
 def("RWY_LIGHTS",  "sim/operation/failures/rel_rwy_lites",        "Rwy Lights",  nil,        true)
 def("SMOKE",       "sim/operation/failures/rel_smoke_cpit",       "Smoke",       "engine_or_elec", true,
     { cond = smoke_fixable, on_fix = smoke_on_fix })
-def("BIRD_RANDOM", "sim/operation/failures/rel_bird_strike",      "Bird/Random", "airborne", true)
 def("BIRD_ENG1",   "sim/operation/failures/rel_bird_strike_eng1", "Bird/Eng1",   "airborne", true)
 def("BIRD_ENG2",   "sim/operation/failures/rel_bird_strike_eng2", "Bird/Eng2",   "airborne", true)
 def("DOOR_OPEN",   "sim/operation/failures/rel_door_open",  "Door",       nil,       true)
@@ -918,9 +916,9 @@ def("GEAR_ACT",       "sim/operation/failures/rel_gear_act",         "Gear Act",
 def("GEAR_RET_1",     "sim/operation/failures/rel_lagear1",          "Gear Ret 1",   nil)
 def("GEAR_RET_2",     "sim/operation/failures/rel_lagear2",          "Gear Ret 2",   nil)
 def("GEAR_RET_3",     "sim/operation/failures/rel_lagear3",          "Gear Ret 3",   nil)
-def("GEAR_COL_1",     "sim/operation/failures/rel_collapse1",        "Gear Col 1",   "ground_roll")
-def("GEAR_COL_2",     "sim/operation/failures/rel_collapse2",        "Gear Col 2",   "ground_roll")
-def("GEAR_COL_3",     "sim/operation/failures/rel_collapse3",        "Gear Col 3",   "ground_roll")
+def("GEAR_COL_1",     "sim/operation/failures/rel_collapse1",        "Gear Col 1",   "ground")
+def("GEAR_COL_2",     "sim/operation/failures/rel_collapse2",        "Gear Col 2",   "ground")
+def("GEAR_COL_3",     "sim/operation/failures/rel_collapse3",        "Gear Col 3",   "ground")
 def("TIRE_1",         "sim/operation/failures/rel_tire1",            "Tire 1",       nil)
 def("TIRE_2",         "sim/operation/failures/rel_tire2",            "Tire 2",       nil)
 def("TIRE_3",         "sim/operation/failures/rel_tire3",            "Tire 3",       nil)
@@ -971,6 +969,7 @@ local function condition_ok(f)
     if     f.condition == "airborne"         then return airborne()
     elseif f.condition == "engine"           then return engine_on()
     elseif f.condition == "engine_or_elec"   then return engine_on() or electrical_on()
+    elseif f.condition == "ground"           then return not airborne()
     elseif f.condition == "ground_roll"      then return ground_roll()
     elseif f.condition == "ground_engine_off" then return not airborne() and not engine_on()
     end
@@ -1497,9 +1496,7 @@ function incidents_tick()
             -- special path: only trigger if at least one unlatched door available
             if not failure_is_active(f) and door_has_unlatched() then
                 local mtbf, flag = get_mtbf(f)
-                if flag == "ON" then
-                    door_trigger_unlatched()
-                elseif flag ~= "OFF" and mtbf then
+                if flag ~= "OFF" and mtbf then
                     if math.random() < prob_from_mtbf(mtbf, TICK_INTERVAL) then
                         door_trigger_unlatched()
                     end
@@ -1510,9 +1507,7 @@ function incidents_tick()
             and not (f.key == "DOOR_1"   and door_routine.latched_1)
             and not (f.key == "DOOR_2"   and door_routine.latched_2) then
             local mtbf, flag = get_mtbf(f)
-            if flag == "ON" and condition_ok(f) then
-                trigger_failure(f)
-            elseif flag ~= "OFF" and mtbf then
+            if flag ~= "OFF" and mtbf then
                 if math.random() < prob_from_mtbf(mtbf, TICK_INTERVAL) then
                     if condition_ok(f) then trigger_failure(f) end
                 end
@@ -1563,6 +1558,19 @@ function incidents_culprit_tick()
         save_memory()
     end
     engine_prev_on = eng_now
+
+    -- ---- Refueling detection: continuous monitor while parked with engine off ----
+    if not airborne() and not eng_now and fuel_cap_mem_l ~= nil and fuel_cap_mem_r ~= nil then
+        local live_l = read_fuel_l()
+        local live_r = read_fuel_r()
+        if (live_l and live_l > fuel_cap_mem_l + 1.0)
+        or (live_r and live_r > fuel_cap_mem_r + 1.0) then
+            fuel_cap_check_done = false
+            fuel_cap_mem_l = live_l
+            fuel_cap_mem_r = live_r
+            save_memory()
+        end
+    end
 
     -- ---- External view + on ground + engines off → fuel cap preflight check ----
     if not system_paused and not fuel_cap_check_done and not airborne()
@@ -1639,9 +1647,7 @@ build_active_profile()
 
 for _, f in ipairs(failures) do
     local _, flag = get_mtbf(f)
-    if     flag == "ON"  then trigger_failure(f)
-    elseif flag == "OFF" then reset_failure(f)
-    end
+    if flag == "OFF" then reset_failure(f) end
 end
 
 load_memory()

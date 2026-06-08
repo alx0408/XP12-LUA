@@ -1,40 +1,38 @@
 # xp12_incidents_config.txt
-# Konfiguration für xp12_incidents.lua
+# Configuration for xp12_incidents.lua
 #
-# MODE         = ON | OFF | <Minuten>   (RANDOM: ein Failure innerhalb X Minuten)
-# DEFAULT_MTBF = <Stunden>             (Fallback für alle Failures mit "DEFAULT")
-#
-# Profile: [NAME] — ICAO = <Code>
-#   Das Script liest beim Start die ICAO des Flugzeugs und wählt das passende Profil.
-#   Kein passendes Profil → [DEFAULT] wird verwendet.
-#   Profil-Einträge überschreiben [DEFAULT] — nur Abweichungen müssen eingetragen werden.
-#
-# Pro Failure:
-#   <Zahl>    = MTBF in Stunden
-#   DEFAULT   = MTBF aus DEFAULT_MTBF
-#   OFF       = deaktiviert
-#   ON        = sofort aktiv beim Laden/Reset
+# SCRIPT-MODE  = ON | OFF | <minutes>   (RANDOM: one failure within <X> minutes)
+# DEFAULT_MTBF = <hours>               (fallback for all failures set to "DEFAULT")
 
 MODE         = ON
 DEFAULT_MTBF = 10000
 
+# Profiles:
+#   The script reads the aircraft ICAO at startup and selects the matching profile.
+#   No matching profile → [DEFAULT] is used.
+#   Profile entries override [DEFAULT] — only deviations need to be listed.
+
+# Profile modes:
+#   <number>  = MTBF in hours
+#   DEFAULT   = MTBF from DEFAULT_MTBF
+#   OFF       = disabled
 
 # ============================================================
-#  DEFAULT — gilt für alle Flugzeuge ohne eigenes Profil
+#  DEFAULT
 # ============================================================
 
 [DEFAULT]
 
 # ---- ENVIRONMENT -------------------------------------------
-VASI              = DEFAULT	# turns off papi / vasi
-RWY_LIGHTS        = DEFAULT	# turns off rwy light, can not be reactivated by (xp native) "rwy light high" command
-SMOKE             = DEFAULT	# fix: BATs & GENs OFF, Avionions OFF; one culprit will remain ...(?); no fix, if smoke by engine fire.
-BIRD_ENG1         = DEFAULT	# airborne only
-BIRD_ENG2         = DEFAULT	# airborne only; with one engine only, birds will pass nearby...
-DOOR_OPEN         = DEFAULT	# custom failure: opens one unlatched door physically; guard: close = LATCH
-FUEL_CAP          = DEFAULT	# custom failure: one side, high→decreasing rate, airborne only; does not work on B58
-FUEL_WATER        = DEFAULT     # engine will might run for a few seconds but it will not start  ...; on ground and engine off only; no cure; does not work on B58
-FUEL_TYPE         = DEFAULT	# engine will flame out after a while; prop not turning with starter anymore; on ground and engine off only; no cure
+VASI              = DEFAULT
+RWY_LIGHTS        = DEFAULT
+SMOKE             = DEFAULT
+BIRD_ENG1         = DEFAULT
+BIRD_ENG2         = DEFAULT
+DOOR_OPEN         = DEFAULT
+FUEL_CAP          = DEFAULT
+FUEL_WATER        = DEFAULT
+FUEL_TYPE         = DEFAULT
 
 
 # ---- ENGINES -----------------------------------------------
@@ -48,17 +46,17 @@ MAG_L1            = DEFAULT
 MAG_L2            = DEFAULT
 MAG_R1            = DEFAULT
 MAG_R2            = DEFAULT
-FUEL_PUMP_LO_1    = DEFAULT	# wahrscheinlich: Pumpe läuft, erzeugt aber nur geringen Druck
+FUEL_PUMP_LO_1    = DEFAULT
 FUEL_PUMP_LO_2    = DEFAULT
-FUEL_PUMP_1       = DEFAULT	# Mechanische Kraftstoffpumpe
+FUEL_PUMP_1       = DEFAULT
 FUEL_PUMP_2       = DEFAULT
 ELE_FUEL_PMP_1    = DEFAULT
 ELE_FUEL_PMP_2    = DEFAULT
-FUEL_FLOW_1       = DEFAULT	# Vermutung: Schwankungen Treibstoffzufuhr
+FUEL_FLOW_1       = DEFAULT
 FUEL_FLOW_2       = DEFAULT
-FUEL_BLOCK_1      = DEFAULT	# Vermutung: Kraftstoff-Filter blocked / warum in XP unter "Welt"?
+FUEL_BLOCK_1      = DEFAULT
 FUEL_BLOCK_2      = DEFAULT
-FUEL_LEAK         = DEFAULT	# custom failure: engine must be running; random side(s), low→increasing rate
+FUEL_LEAK         = DEFAULT
 OIL_PUMP_1        = DEFAULT
 OIL_PUMP_2        = DEFAULT
 OIL_PRESS_LO_1    = DEFAULT
@@ -66,7 +64,7 @@ OIL_PRESS_LO_2    = DEFAULT
 AIRFLOW_ENG1      = DEFAULT
 AIRFLOW_ENG2      = DEFAULT
 
-# ---- PROPELLERS (nur constant speed prop) -------------------------
+# ---- PROPELLERS (constant speed prop only) -------------------------
 PROP_FINE_1       = DEFAULT
 PROP_FINE_2       = DEFAULT
 PROP_COARSE_1     = DEFAULT
@@ -84,7 +82,7 @@ GEN0_HI           = DEFAULT
 GEN1_LO           = DEFAULT
 GEN1_HI           = DEFAULT
 BAT0_LO           = DEFAULT
-BAT0_HI           = DEFAULT	# nur sinnvoll als folgefehler von alternator / avionics laufen auch mit 32 V / kann ggf. raus.
+BAT0_HI           = DEFAULT
 BAT1_LO           = DEFAULT
 BAT1_HI           = DEFAULT
 
@@ -98,12 +96,12 @@ LITES_INST        = DEFAULT
 LITES_COCKPIT     = DEFAULT
 
 # ---- AUTOPILOT ---------------------------------------------
-AP_COMPUTER       = DEFAULT	# AP turns off, no indicators; no chime!
-AP_RUNAWAY        = DEFAULT	# AP out of control
-AP_SERVOS         = DEFAULT	# chime sounds, indicators stay on, AP will not work
-AP_SERVO_ELEV     = DEFAULT	# elevator servo restricted; altitude will vary
-AP_SERVO_AILN     = DEFAULT	# aileron servo restricted; will react rarely
-AP_SERVO_RUDD     = DEFAULT	# yaw damper restricted
+AP_COMPUTER       = DEFAULT
+AP_RUNAWAY        = DEFAULT
+AP_SERVOS         = DEFAULT
+AP_SERVO_ELEV     = DEFAULT
+AP_SERVO_AILN     = DEFAULT
+AP_SERVO_RUDD     = DEFAULT
 
 # ---- SYSTEMS -----------------------------------------------
 PITOT_HEAT_1      = DEFAULT
@@ -125,67 +123,70 @@ TSI_PILOT         = DEFAULT
 DGY_PILOT         = DEFAULT
 VVI_PILOT         = DEFAULT
 ALT_COPILOT       = DEFAULT
-AHZ_COPILOT       = DEFAULT	# does not work on B58
-G430_GPS1         = DEFAULT	# device will fail completely
-G430_GPS2         = DEFAULT	# device will fail completely
-G430_NAV1         = DEFAULT	# only COM und NAV will fail (?); does not work on B58; consider delete
-G430_NAV2         = DEFAULT	# only COM und NAV will fail (?); consider delete
-G_ASI             = DEFAULT	# G1000 only
-G_ALT             = DEFAULT	# G1000 only
-G_VVI             = DEFAULT	# G1000 only
-G_PFD             = DEFAULT	# G1000 only
-G_MFD             = DEFAULT	# G1000 only
-G_GIA1            = DEFAULT	# G1000 only
-G_GIA2            = DEFAULT	# G1000 only
-G_GEA             = DEFAULT	# G1000 only
-MAGNETOMETER      = DEFAULT	# G1000 only
+AHZ_COPILOT       = DEFAULT
+G430_GPS1         = DEFAULT
+G430_GPS2         = DEFAULT
+G430_NAV1         = DEFAULT
+G430_NAV2         = DEFAULT
+G_ASI             = DEFAULT
+G_ALT             = DEFAULT
+G_VVI             = DEFAULT
+G_PFD             = DEFAULT
+G_MFD             = DEFAULT
+G_GIA1            = DEFAULT
+G_GIA2            = DEFAULT
+G_GEA             = DEFAULT
+MAGNETOMETER      = DEFAULT
+
 #prüfen, ob bei G1000 ADC und/oder AHRS ausfallen können (oder ist das nur für Airliner)
-WXR_RADAR         = DEFAULT	# does not work on B58
-NAVCOM1           = DEFAULT	# n/a with GPS-device
-NAVCOM2           = DEFAULT	# n/a with GPS-device
+
+WXR_RADAR         = DEFAULT
+NAVCOM1           = DEFAULT
+NAVCOM2           = DEFAULT
 ADF1              = DEFAULT
 DME               = DEFAULT
 XPNDR             = DEFAULT
 MARKER            = DEFAULT	# TRY INFLIGHT
-RPM_IND_1         = DEFAULT	# does not work on B58
-RPM_IND_2         = DEFAULT	# does not work on B58
-MP_IND_1          = DEFAULT	# does not work on B58
-MP_IND_2          = DEFAULT	# does not work on B58
-CHT_IND_1         = DEFAULT	# does not work on B58
-CHT_IND_2         = DEFAULT	# does not work on B58
-EGT_IND_1         = DEFAULT	# does not work on B58
-EGT_IND_2         = DEFAULT	# does not work on B58
-FF_IND_1          = DEFAULT	# does not work on B58
-FF_IND_2          = DEFAULT	# does not work on B58
-FUEL_P_IND_1      = DEFAULT	# does not work on B58
-FUEL_P_IND_2      = DEFAULT	# does not work on B58
-FUEL_QTY          = DEFAULT	# dt. "TreibstoffGÜTEsensor"; richtig: quantity; does not work on B58
-OIL_P_IND_1       = DEFAULT	# does not work on B58
-OIL_P_IND_2       = DEFAULT	# does not work on B58
-OIL_T_IND_1       = DEFAULT	# does not work on B58
-OIL_T_IND_2       = DEFAULT	# does not work on B58
+RPM_IND_1         = DEFAULT
+RPM_IND_2         = DEFAULT
+MP_IND_1          = DEFAULT
+MP_IND_2          = DEFAULT
+CHT_IND_1         = DEFAULT
+CHT_IND_2         = DEFAULT
+EGT_IND_1         = DEFAULT
+EGT_IND_2         = DEFAULT
+FF_IND_1          = DEFAULT
+FF_IND_2          = DEFAULT
+FUEL_P_IND_1      = DEFAULT
+FUEL_P_IND_2      = DEFAULT
+FUEL_QTY          = DEFAULT
+OIL_P_IND_1       = DEFAULT
+OIL_P_IND_2       = DEFAULT
+OIL_T_IND_1       = DEFAULT
+OIL_T_IND_2       = DEFAULT
 STALL_WARN        = DEFAULT	# TRY INFLIGHT on B58
 GEAR_WARN         = DEFAULT
-PROP_SYNC         = DEFAULT	# single engine off; fails the instrument, not the system
+PROP_SYNC         = DEFAULT
 
 # ---- SENSORS / ANTENNAS  -----------------------------------------------
-PITOT             = DEFAULT	# does not work on B58
-PITOT_2           = DEFAULT	# does not work on B58
+PITOT             = DEFAULT
+PITOT_2           = DEFAULT
 PITOT_STBY        = DEFAULT
 STATIC            = DEFAULT
 STATIC_2          = DEFAULT
-STATIC_STBY       = DEFAULT	# does not work on B58
+STATIC_STBY       = DEFAULT
 STATIC_ERR_1      = DEFAULT
 STATIC_ERR_2      = DEFAULT
 OAT               = DEFAULT
-ICE_DETECT        = DEFAULT	# for TKS only
-LOC               = DEFAULT	# LOC will red-flag
-GLS               = DEFAULT	# GS will red-flag
-GPS               = DEFAULT	# position will freeze
+ICE_DETECT        = DEFAULT
+LOC               = DEFAULT
+GLS               = DEFAULT
+GPS               = DEFAULT
+
 # maybe return com1/2 nav 1/2 again -> antennas / check in xp
 
 # ---- GEAR --------------------------------------------------
-GEAR_IND          = DEFAULT	# does not work on B58
+GEAR_IND          = DEFAULT
 GEAR_ACT          = DEFAULT
 GEAR_RET_1        = DEFAULT
 GEAR_RET_2        = DEFAULT
@@ -202,29 +203,24 @@ BRAKES_L          = DEFAULT
 BRAKES_R          = DEFAULT
 
 # ---- CONTROLS ----------------------------------------------
-# electrical trim will be out of control continuosly - fix needed (i.a. AP disconnet inlcuding trim)
-# trim servo failure (not included in script so far) will lock trim in current position
-
-FLAP_ACT          = DEFAULT	# both flaps will lock in current position
-FLAP_ACT_L        = DEFAULT	# flap will lock in current position
-FLAP_ACT_R        = DEFAULT	# flap will lock in current position
-ELV_TRIM_RUN      = DEFAULT	# has effect on electrcal trim only
-AIL_TRIM_RUN      = DEFAULT	# has effect on electrcal trim only
-RUD_TRIM_RUN      = DEFAULT	# has effect on electrcal trim only
-TRIM_ELV          = DEFAULT	# follow-up after trim runaway fix: system dead
+FLAP_ACT          = DEFAULT
+FLAP_ACT_L        = DEFAULT
+FLAP_ACT_R        = DEFAULT
+ELV_TRIM_RUN      = DEFAULT
+AIL_TRIM_RUN      = DEFAULT
+RUD_TRIM_RUN      = DEFAULT
+TRIM_ELV          = DEFAULT
 TRIM_AIL          = DEFAULT
 TRIM_RUD          = DEFAULT
 
-
 # ============================================================
-#  C172 — Cessna 172 (steam gauges, SEP, fixed gear)
+#  C172 — Cessna 172
 # ============================================================
 
 [C172]
 ICAO = C172
 
 # ---- ENVIRONMENT -------------------------------------------
-# BIRD_ENG2         = NOT OFF; only birds nearby …
 
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_2        = OFF
@@ -268,15 +264,15 @@ VACUUM_2          = OFF
 # ---- INSTRUMENTS -------------------------------------------
 ALT_COPILOT       = OFF
 AHZ_COPILOT       = OFF
-G_ASI             = OFF	# G1000 only
-G_ALT             = OFF	# G1000 only
-G_VVI             = OFF	# G1000 only
-G_PFD             = OFF	# G1000 only
-G_MFD             = OFF	# G1000 only
-G_GIA1            = OFF	# G1000 only
-G_GIA2            = OFF	# G1000 only
-G_GEA             = OFF	# G1000 only
-MAGNETOMETER      = OFF	# G1000 only
+G_ASI             = OFF
+G_ALT             = OFF
+G_VVI             = OFF
+G_PFD             = OFF
+G_MFD             = OFF
+G_GIA1            = OFF
+G_GIA2            = OFF
+G_GEA             = OFF
+MAGNETOMETER      = OFF
 WXR_RADAR         = OFF
 NAVCOM1           = OFF
 NAVCOM2           = OFF
@@ -316,7 +312,6 @@ RUD_TRIM_RUN      = OFF
 TRIM_AIL          = OFF
 TRIM_RUD          = OFF
 
-
 # ============================================================
 #  SR22 — Cirrus SR22 G1000
 # ============================================================
@@ -325,7 +320,6 @@ TRIM_RUD          = OFF
 ICAO = SR22
 
 # ---- ENVIRONMENT -------------------------------------------
-# BIRD_ENG2         = NOT OFF; only birds nearby …
 
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_2        = OFF
@@ -396,21 +390,16 @@ GEAR_RET_3        = OFF
 
 # ============================================================
 #  BE58 — SimCoders Baron 58 REP
-#  Achtung: REP verwaltet diverse failures, insb Engine/Prop selbst
-# -> merkwürdige Effekte möglich
 # ============================================================
 
 [BE58]
 ICAO = BE58
 
 # ---- ENVIRONMENT -------------------------------------------
-# bird strike may damage engine with or without fire
-FUEL_WATER        = OFF	# no effect
-FUEL_TYPE         = OFF	# no effect
-
+FUEL_WATER        = OFF
+FUEL_TYPE         = OFF
 
 # ---- ENGINES -----------------------------------------------
-# all engines failures off, managed by REP
 ENG_FAIL_1        = OFF
 ENG_FAIL_2        = OFF
 ENG_FIRE_1        = OFF
@@ -436,17 +425,13 @@ OIL_PUMP_2        = OFF
 AIRFLOW_ENG1      = OFF
 AIRFLOW_ENG2      = OFF
 
-
 # ---- PROPELLERS --------------------------------------------
-# all prop failures off, managed by REP
 PROP_FINE_1       = OFF
 PROP_FINE_2       = OFF
 PROP_COARSE_1     = OFF
 PROP_COARSE_2     = OFF
 
-
 # ---- ELECTRICAL --------------------------------------------
-# all electrical failures off, managed by REP
 ELEC_BUS1         = OFF
 ELEC_BUS2         = OFF
 GENERATOR_1       = OFF
@@ -462,95 +447,65 @@ BAT0_HI           = OFF
 BAT1_LO           = OFF
 BAT1_HI           = OFF
 
-
 # ---- LIGHTS ------------------------------------------------
-# all light-failures are working
-# beacon will only effect fuselage light
-# ldg will switch off both lights
 
 # ---- AUTOPILOT ---------------------------------------------
-# all AP failures working
 
 # ---- SYSTEMS -----------------------------------------------
-# generally working
-# prop heat failure = drop only on ampmeter, not on prop-ampmeter
-# vacuum failures needs to be fixed in maintenace
-
 TKS_PUMP          = OFF
 HVAC              = OFF
 
-# ---- INSTRUMENTS -------------------------------------------
-# ADF, Transponder will fail, but do not appear in maintenance
-# GPS (position will freeze while GPS-device is ON)
-# LOC & GLS (Glide Slope) will freeze with flag
-# Instruments and devices not set to OFF will fail
-# Gear warn will mute
-# Engine instruments are controlled bei REP
-
-AHZ_COPILOT       = OFF	# no effect
-G430_GPS2         = OFF	# n/a
-G430_NAV1         = OFF	# no effect
-G430_NAV2         = OFF	# n/a
-G_ASI             = OFF	# G1000 only
-G_ALT             = OFF	# G1000 only
-G_VVI             = OFF	# G1000 only
-G_PFD             = OFF	# G1000 only
-G_MFD             = OFF	# G1000 only
-G_GIA1            = OFF	# G1000 only
-G_GIA2            = OFF	# G1000 only
-G_GEA             = OFF	# G1000 only
-MAGNETOMETER      = OFF	# G1000 only
-WXR_RADAR         = OFF	# no effect
-NAVCOM1           = OFF	# redundand GPS-device
-NAVCOM2           = OFF	# redundand GPS-device
-RPM_IND_1         = OFF	# no effect
-RPM_IND_2         = OFF	# no effect
-MP_IND_1          = OFF	# no effect
-MP_IND_2          = OFF	# no effect
-CHT_IND_1         = OFF	# no effect
-CHT_IND_2         = OFF	# no effect
-EGT_IND_1         = OFF	# no effect
-EGT_IND_2         = OFF	# no effect
-FF_IND_1          = OFF	# no effect
-FF_IND_2          = OFF	# no effect
-FUEL_P_IND_1      = OFF	# no effect
-FUEL_P_IND_2      = OFF	# no effect
-FUEL_QTY          = OFF	# no effect
-OIL_P_IND_1       = OFF	# no effect
-OIL_P_IND_2       = OFF	# no effect
-OIL_T_IND_1       = OFF	# no effect
-OIL_T_IND_2       = OFF	# no effect
+# ---- INSTRUMENTS ------------------------------------------
+AHZ_COPILOT       = OFF
+G430_GPS2         = OFF
+G430_NAV1         = OFF
+G430_NAV2         = OFF
+G_ASI             = OFF
+G_ALT             = OFF
+G_VVI             = OFF
+G_PFD             = OFF
+G_MFD             = OFF
+G_GIA1            = OFF
+G_GIA2            = OFF
+G_GEA             = OFF
+MAGNETOMETER      = OFF
+WXR_RADAR         = OFF
+NAVCOM1           = OFF
+NAVCOM2           = OFF
+RPM_IND_1         = OFF
+RPM_IND_2         = OFF
+MP_IND_1          = OFF
+MP_IND_2          = OFF
+CHT_IND_1         = OFF
+CHT_IND_2         = OFF
+EGT_IND_1         = OFF
+EGT_IND_2         = OFF
+FF_IND_1          = OFF
+FF_IND_2          = OFF
+FUEL_P_IND_1      = OFF
+FUEL_P_IND_2      = OFF
+FUEL_QTY          = OFF
+OIL_P_IND_1       = OFF
+OIL_P_IND_2       = OFF
+OIL_T_IND_1       = OFF
+OIL_T_IND_2       = OFF
 
 # ---- SENSORS -----------------------------------------------
-# Static #1 is pilot, static #2 is co-pilot
-# failures will have effect (ERR =  1.200 low)
-# alternate air will work, but readings will vary significantly
-
-PITOT             = OFF	# controled by REP / no effect
-PITOT_2           = OFF	# no effect
-PITOT_STBY        = OFF	# n/a
-STATIC_STBY       = OFF	# no effect
-OAT               = OFF # no effect
-ICE_DETECT        = OFF	# TKS only
-FUEL_QTY          = OFF # no effect
+PITOT             = OFF
+PITOT_2           = OFF
+PITOT_STBY        = OFF
+STATIC_STBY       = OFF
+OAT               = OFF
+ICE_DETECT        = OFF
+FUEL_QTY          = OFF
 
 # ---- GEAR --------------------------------------------------
-# #1 = front, #2 = left, #3 = right
-# tire damage needs to be fixed in maintenance
-# gear collapse cannot be repaired im maintenance, only with new flight
-# gear actuator failure = no gear toggle at all
-# gear rectract #1-#3 = gear freeze in current condition
-# each brake will fail completely
-GEAR_IND          = OFF # no effect
-TIRE_4            = OFF	# n/a
-TIRE_5            = OFF	# n/a
-
+GEAR_IND          = OFF
+TIRE_4            = OFF
+TIRE_5            = OFF
 
 # ---- CONTROLS ----------------------------------------------
-# flap extension in overspeed will result in loss of flaps (without animation, but with effect)
-# electrical trim will be out of control continuosly - fix needed (i.a. AP disconnet inlcuding trim)
-
-AIL_TRIM_RUN      = OFF	#n/a, on B58 not electrical
-RUD_TRIM_RUN      = OFF	#n/a, on B58 not electrical
+AIL_TRIM_RUN      = OFF
+RUD_TRIM_RUN      = OFF
 TRIM_AIL          = OFF
 TRIM_RUD          = OFF
