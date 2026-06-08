@@ -52,10 +52,10 @@ Popups (shown for 5 seconds in the status overlay area):
   "-- PAUSED --"       Script paused.
   "-- PROFILE RESET --"
   "-- ALL TRIGGERED --" / "-- ALL RESET --"
-  "DOOR 1 LATCHED" / "DOOR 2 LATCHED"
-  "TANK CAP CHECKED"   External view preflight check registered.
-
-
+  "TANK CAP CHECKED"
+  "FUEL TANK DRAINED"
+  "DOOR 1 LATCHED" / "DOOR 2 LATCHED" / "DOORS LATCHED"
+  
 Status display can be toggled via FLW-macro or assigned key:
   Shows current mode, conditions enforcement state, 
   all currently active guards and failures.
@@ -67,11 +67,10 @@ Status display special entries (for guards or pending conditions):
   "DOOR 1/2: LATCHED"   (green)  Door latch guard active.
 
 Global commands:
-  FlyWithLua/Incidents/pause               Pause / resume all automatic triggering.
-  FlyWithLua/Incidents/reset_profile       Reset all failures and reload memory.
-  FlyWithLua/Incidents/reset_all           Reset all profile-failures.
-  FlyWithLua/Incidents/trigger_all         Trigger / reset all enabled failures at once.
-   FlyWithLua/Incidents/toggle_conditions   Toggle condition enforcement ON/OFF.
+  FlyWithLua/Incidents/toggle system       Pause / resume all automatic triggering.
+  FlyWithLua/Incidents/reset_profile       Reset all profile-failures.
+  FlyWithLua/Incidents/trigger_all         Trigger all / reset all failures at once.
+  FlyWithLua/Incidents/toggle_conditions   Toggle condition enforcement ON/OFF.
                                            When ON: manual triggers respect the
                                            same conditions as auto triggers.
   FlyWithLua/Incidents/latch_all_doors     Latch all available doors. Toggle:
@@ -80,6 +79,7 @@ Global commands:
                                            in external view with engine off.
                                            Blocks FUEL_WATER for that flight.
                                            Invalidated when refueling is detected.
+  FlyWithLua/Incidents/drain_fuel_tanks    Manually toggle Fuel Tank Check status.                              
 
 Per-failure commands (one per failure):
   FlyWithLua/Incidents/<failure_key_lowercase>
@@ -122,6 +122,7 @@ CONDITIONS:
   ground_engine_off — on the ground, engines off
   engine            — at least one engine must be running
   engine_or_elec    — one engine running or electrical bus powered
+  on ground         — on the ground
   ground_roll       — on the ground, rolling (speed > 15 kn)
   airborne          — aircraft must be in the air
 
@@ -244,36 +245,38 @@ Effect:    Engine fire.
            Smoke from engine fire has no fix.
 Condition: Engine running.
 
-STARTER_1 / STARTER_2
+STARTER_1 / STARTER_2 ##checked
 ----------------------
-Effect:    Starter motor fails. Engine cannot be cranked.
+Effect:    Starter motor fails. Engine cannot be cranked. 
 
-MAG_L1 / MAG_L2 / MAG_R1 / MAG_R2
+MAG_L1 / MAG_L2 / MAG_R1 / MAG_R2  ##checked 
 -----------------------------------
-Effect:    Left or right magneto failure on engine 1 or 2. RPM drop on the
-           affected magneto during mag check; rough running at low power.
+Effect:    Left or right magneto failure on engine 1 or 2. 
+           RPM drop on the affected engine; massive drop during magneto check.
 
-FUEL_PUMP_LO_1 / FUEL_PUMP_LO_2
+FUEL_PUMP_LO_1 / FUEL_PUMP_LO_2 ##checked
 ---------------------------------
-Effect:    Fuel pump low pressure — pump runs but produces insufficient
-           pressure. May cause engine roughness or lean-out at altitude.
+Effect:    Fuel pump low pressure — pump runs but produces insufficient pressure.
+           Causes float in fuel flow and RPM. 
 
-FUEL_PUMP_1 / FUEL_PUMP_2
+FUEL_PUMP_1 / FUEL_PUMP_2 ##checked; exactly same effect as engine failure.
 --------------------------
 Effect:    Mechanical (engine-driven) fuel pump failure.
+           Engines dies.
 
-ELE_FUEL_PMP_1 / ELE_FUEL_PMP_2
+ELE_FUEL_PMP_1 / ELE_FUEL_PMP_2 ##checked
 ---------------------------------
-Effect:    Electric fuel (boost) pump failure.
+Effect:    Electric fuel (boost) pump failure. 
 
-FUEL_FLOW_1 / FUEL_FLOW_2
+FUEL_FLOW_1 / FUEL_FLOW_2 ##checked; check delete as nearly the same aus fuel pump lo
 --------------------------
 Effect:    Irregular fuel supply causing flow fluctuations.
+           Causes similar float in fuel flow and RPM like fuel pump LO. 
 
-FUEL_BLOCK_1 / FUEL_BLOCK_2
+FUEL_BLOCK_1 / FUEL_BLOCK_2 ##checked. no obvious effect. maybe longterm? check delete
 ----------------------------
 Effect:    Fuel filter or line blockage.
-           Restricts or stops fuel flow to the engine.
+           Restricts or stops fuel flow to the engine. 
 
 FUEL_LEAK
 ---------
@@ -284,17 +287,19 @@ Effect:    Custom failure — active fuel leak. Side determined randomly:
            State is memory-persistent — survives sessions.
 Condition: Engine running.
 
-OIL_PUMP_1 / OIL_PUMP_2
+OIL_PUMP_1 / OIL_PUMP_2  ##checked; realistic?
 ------------------------
-Effect:    Oil pump failure. Oil pressure will drop; engine damage may follow.
+Effect:    Oil pump failure. Oil pressure will drop to zero.
+           Rise in oil temperature, significant loss of power.
 
-OIL_PRESS_LO_1 / OIL_PRESS_LO_2
+OIL_PRESS_LO_1 / OIL_PRESS_LO_2   ##checked; no obvious effect. maybe longterm? check delete
 ----------------------------------
 Effect:    Low oil pressure warning / reduced lubrication.
 
-AIRFLOW_ENG1 / AIRFLOW_ENG2
+AIRFLOW_ENG1 / AIRFLOW_ENG2 ##checked
 ----------------------------
 Effect:    Airflow restriction to the engine (induction system).
+           Loss of power, significant drop in EGT.
 
 ==============================================================================
  PROPELLER FAILURES  (constant-speed props only)
@@ -319,32 +324,40 @@ Effect:    Propeller governor fails toward coarse pitch. Inability to achieve
 
 Note:      Engine failures do not work on the B58 (SimCoders REP).
 
-ELEC_BUS1 / ELEC_BUS2
-----------------------
-Effect:    Main or secondary electrical bus failure. All equipment on that bus
-           loses power.
-
-GENERATOR_1 / GENERATOR_2
---------------------------
-Effect:    Generator/alternator failure. Battery becomes sole power source.
-           Ammeter shows discharge; limited time to electrical shutdown.
-
-BATTERY_1 / BATTERY_2
+BATTERY_1 / BATTERY_2 ##checked
 ----------------------
 Effect:    Battery failure. If generator is also off or fails subsequently,
            complete electrical shutdown follows.
+Note:      Even though battery fails, still there might be volts indicated.
 
-GEN0_LO / GEN0_HI / GEN1_LO / GEN1_HI
+BAT0_LO / BAT0_HI / BAT1_LO / BAT1_HI  ##checked
 ---------------------------------------
-Effect:    Generator voltage out of normal range (low or high). Low voltage
-           may cause under-voltage on avionics; high voltage risks equipment
-           damage.
+Effect:    Battery voltage out of range.
+           Low voltage may not be noticed if generator is active.
+           Hi voltage: AMP decreases/floats significantly. BAT discharges.
+Note:      BAT_HI may result as follow-up of generator failure.
 
-BAT0_LO / BAT0_HI / BAT1_LO / BAT1_HI
+GENERATOR_1 / GENERATOR_2 ##checked
+--------------------------
+Effect:    Generator  failure. Loss of volts.
+           Ammeter shows discharge. Battery becomes sole power source.
+
+GEN0_LO / GEN0_HI / GEN1_LO / GEN1_HI ##checked
 ---------------------------------------
-Effect:    Battery voltage out of range. BAT0_HI is meaningful mainly as a
-           followup of alternator failure — avionics can still run briefly at
-           elevated battery voltage (≈32V).
+Effect:    Generator voltage out of normal range (low or high).
+           Low voltage may cause under-voltage on avionics; AMP decreases, BAT discharges.
+           High voltage risks equipment damage; AMP increases, BAT overcharges.
+Note:      Avionics can still run briefly at elevated battery voltage (≈32V).
+
+ELEC_BUS1 / ELEC_BUS2 ##checked
+----------------------
+Effect:    Main or secondary electrical bus failure.
+           All equipment on that bus loses power.
+
+
+Note: Laminar aircraft may not be modeled precisely in detail. i.a. GEN HI overcharging may not effect BAT volts.
+
+# we need to develop failure chains.
 
 Note: All electrical failures are disabled for the B58 (SimCoders REP manages
 the entire electrical system). See aircraft limitations.

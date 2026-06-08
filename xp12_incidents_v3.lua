@@ -455,8 +455,10 @@ local function fuel_cap_evaluate_check()
         save_memory()
     elseif (live_l and live_l > fuel_cap_mem_l + 1.0)
         or (live_r and live_r > fuel_cap_mem_r + 1.0) then
-        -- refueling detected: invalidate check, update snapshot
-        fuel_cap_check_done = false
+        -- refueling detected: invalidate checks, set fuel type pending
+        fuel_cap_check_done   = false
+        fuel_drain_check_done = false
+        fuel_type_pending     = true
         fuel_cap_mem_l = live_l
         fuel_cap_mem_r = live_r
         save_memory()
@@ -1032,14 +1034,21 @@ local function trigger_failure(f)
         start_fuel_leak(al, ar)
         return
     end
-    -- DOOR_OPEN: dice roll among all available doors; latch checked after selection
+    -- DOOR_OPEN: dice roll; latch respected when conditions enforced, bypassed when off
     if f.key == "DOOR_OPEN" then
-        door_trigger_unlatched()
+        if conditions_enforced then
+            door_trigger_unlatched()
+        else
+            local avail = {}
+            if door_available(1) and not door_routine.open_1 then table.insert(avail, 1) end
+            if door_available(2) and not door_routine.open_2 then table.insert(avail, 2) end
+            if #avail > 0 then start_door_open(avail[math.random(#avail)]) end
+        end
         return
     end
-    -- DOOR_1 / DOOR_2: respects latch guard — latched door cannot be opened manually
-    if f.key == "DOOR_1" then if door_routine.latched_1 then return end; start_door_open(1); return end
-    if f.key == "DOOR_2" then if door_routine.latched_2 then return end; start_door_open(2); return end
+    -- DOOR_1 / DOOR_2: latch respected when conditions enforced, bypassed when off
+    if f.key == "DOOR_1" then if conditions_enforced and door_routine.latched_1 then return end; start_door_open(1); return end
+    if f.key == "DOOR_2" then if conditions_enforced and door_routine.latched_2 then return end; start_door_open(2); return end
     set_dr(f, 6)
     save_memory()
     -- cascade followup (e.g. engine fire → smoke)
@@ -1273,6 +1282,8 @@ function incidents_drain_fuel_tanks()
     if airborne() or engine_on() then return end
     if not (_ref_view_ext and XPLMGetDatai(_ref_view_ext) == 1) then return end
     fuel_drain_check_done = true
+    local fw = find_failure("FUEL_WATER")
+    if fw and failure_is_active(fw) then reset_failure(fw) end
     inc_trigger_popup("FUEL TANKS DRAINED")
     save_memory()
 end
