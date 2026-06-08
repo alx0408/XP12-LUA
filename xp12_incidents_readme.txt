@@ -55,9 +55,16 @@ Popups (shown for 5 seconds in the status overlay area):
   "DOOR 1 LATCHED" / "DOOR 2 LATCHED"
   "TANK CAP CHECKED"   External view preflight check registered.
 
-Status display can be (toggeled via FLW-macro or assigned key:
+
+Status display can be toggled via FLW-macro or assigned key:
   Shows current mode, conditions enforcement state, 
   all currently active guards and failures.
+
+Status display special entries (for guards or pending conditions):
+  "FUEL TYPE: PENDING"  (orange) Refueling detected — FUEL_TYPE failure possible on ground.
+  "FUEL TANKS: DRAINED" (green)  Drain check done — FUEL_WATER blocked.
+  "FUEL CAPS: CHECKED"  (green)  Cap check done — FUEL_CAP blocked.
+  "DOOR 1/2: LATCHED"   (green)  Door latch guard active.
 
 Global commands:
   FlyWithLua/Incidents/pause               Pause / resume all automatic triggering.
@@ -69,6 +76,10 @@ Global commands:
                                            same conditions as auto triggers.
   FlyWithLua/Incidents/latch_all_doors     Latch all available doors. Toggle:
                                            if all already latched, unlatches all.
+  FlyWithLua/Incidents/drain_fuel_tanks    Fuel drain preflight check. Only works
+                                           in external view with engine off.
+                                           Blocks FUEL_WATER for that flight.
+                                           Invalidated when refueling is detected.
 
 Per-failure commands (one per failure):
   FlyWithLua/Incidents/<failure_key_lowercase>
@@ -193,15 +204,25 @@ FUEL_WATER
 ----------
 Effect:    Water contamination in fuel. Engine may run for a few seconds after
            start but will not sustain operation and will not restart.
-Condition: On the ground, engine off (ground_engine_off). 
-Prevention:[fuel drain check = outside view + command / to be done]
+Condition: On the ground, engine off (ground_engine_off).
+Prevention:
+           Fuel drain check: switch to any external view with engine off, then
+           use the command FlyWithLua/Incidents/drain_fuel_tanks. The script
+           confirms with a popup "FUEL TANKS DRAINED" and shows "FUEL TANKS: DRAINED"
+           in the status display. The check is invalidated if refueling is detected.
 Note:      Does not work on the B58 (SimCoders REP).
 
 FUEL_TYPE
 ---------
 Effect:    Wrong fuel type loaded. Engine flames out after a short period;
            propeller will no longer turn with the starter.
-Condition: On the ground, engine off (ground_engine_off) [+ refueling detected / to be done]
+Condition: On the ground AND refueling detected. Wrong fuel type is typically
+           noticed during engine start, run-up, or taxi — it is unlikely to go
+           undetected until airborne. The failure will not trigger in the air.
+           The script monitors fuel quantity while parked with engine off. When
+           a refueling is detected (fuel rises by more than 1 kg), the failure
+           becomes pending. Status display shows "FUEL TYPE: PENDING" in orange.
+           The pending state clears automatically at liftoff.
 Note:      Does not work on the B58 (SimCoders REP).
 
 

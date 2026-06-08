@@ -148,10 +148,12 @@ local fuel_drain_last = 0
 local door_routine
 
 -- Fuel cap preflight check state
-local fuel_cap_check_done = false   -- true: external-view check done, auto-trigger blocked
-local fuel_cap_mem_l      = nil     -- last engine-off T1 qty (kg) — loaded from memory
-local fuel_cap_mem_r      = nil     -- last engine-off T2 qty (kg) — loaded from memory
-local engine_prev_on      = false   -- for engine-off edge detection
+local fuel_cap_check_done   = false  -- true: external-view check done, FUEL_CAP blocked
+local fuel_drain_check_done = false  -- true: drain command done in ext view, FUEL_WATER blocked
+local fuel_type_pending     = false  -- true: refueling detected, FUEL_TYPE can trigger while on ground
+local fuel_cap_mem_l        = nil    -- last engine-off T1 qty (kg) — loaded from memory
+local fuel_cap_mem_r        = nil    -- last engine-off T2 qty (kg) — loaded from memory
+local engine_prev_on        = false  -- for engine-off edge detection
 
 -- ---- Smoke on-fix callback ---------------------------------
 local function smoke_on_fix(f)
@@ -342,6 +344,8 @@ save_memory = function()
     if fuel_cap_mem_r then
         file:write(string.format("FUEL_CAP_T2 = %.2f\n", fuel_cap_mem_r))
     end
+    if fuel_drain_check_done then file:write("FUEL_DRAIN_CHECK = done\n") end
+    if fuel_type_pending     then file:write("FUEL_TYPE_PENDING = pending\n") end
 
     -- fuel leak routine state: 1=left, 2=right, 3=both
     if fuelleak_routine then
@@ -397,6 +401,10 @@ local function load_memory()
                         fuel_cap_mem_l = tonumber(val)
                     elseif key == "FUEL_CAP_T2" then
                         fuel_cap_mem_r = tonumber(val)
+                    elseif key == "FUEL_DRAIN_CHECK" and val == "done" then
+                        fuel_drain_check_done = true
+                    elseif key == "FUEL_TYPE_PENDING" and val == "pending" then
+                        fuel_type_pending = true
                     elseif key == "FUEL_LEAK" and fuelleak_routine then
                         -- restore fuel leak routine (1=L, 2=R, 3=both)
                         local lv = tonumber(val)
@@ -762,7 +770,7 @@ def("DOOR_2",      nil,                                     "Door 2",     nil,  
 -- no_memory=true; airborne condition + fuel_cap_check_done guard enforced when conditions_enforced=true.
 def("FUEL_CAP",    "sim/operation/failures/rel_fuelcap",    "Fuel Cap",  "airborne",  true)
 def("FUEL_WATER",  "sim/operation/failures/rel_fuel_water", "Fuel Water", "ground_engine_off", true)
-def("FUEL_TYPE",   "sim/operation/failures/rel_fuel_type",  "Fuel Type",  "ground_engine_off", true)
+def("FUEL_TYPE",   "sim/operation/failures/rel_fuel_type",  "Fuel Type",  "ground", true)
 
 -- ---- ENGINES -----------------------------------------------
 def("ENG_FAIL_1",     "sim/operation/failures/rel_engfai0",          "Eng Fail 1",   "engine")
@@ -1112,10 +1120,12 @@ local function schedule_random()
     for _, f in ipairs(failures) do
         local _, flag = get_mtbf(f)
         if flag ~= "OFF" and not failure_is_active(f)
-           and not (f.key == "FUEL_CAP"  and fuel_cap_check_done)
-           and not (f.key == "DOOR_OPEN" and not door_has_unlatched())
-           and not (f.key == "DOOR_1"    and door_routine.latched_1)
-           and not (f.key == "DOOR_2"    and door_routine.latched_2) then
+           and not (f.key == "FUEL_CAP"   and fuel_cap_check_done)
+           and not (f.key == "FUEL_WATER" and fuel_drain_check_done)
+           and not (f.key == "FUEL_TYPE"  and not fuel_type_pending)
+           and not (f.key == "DOOR_OPEN"  and not door_has_unlatched())
+           and not (f.key == "DOOR_1"     and door_routine.latched_1)
+           and not (f.key == "DOOR_2"     and door_routine.latched_2) then
             table.insert(eligible, f)
         end
     end
@@ -1258,6 +1268,21 @@ create_command(
     "incidents_latch_all_doors()", "", ""
 )
 
+-- ---- Fuel drain preflight check ---------------------------
+function incidents_drain_fuel_tanks()
+    if airborne() or engine_on() then return end
+    if not (_ref_view_ext and XPLMGetDatai(_ref_view_ext) == 1) then return end
+    fuel_drain_check_done = true
+    inc_trigger_popup("FUEL TANKS DRAINED")
+    save_memory()
+end
+
+create_command(
+    "FlyWithLua/Incidents/drain_fuel_tanks",
+    "Incidents: drain fuel tanks preflight check (outside view, engine off)",
+    "incidents_drain_fuel_tanks()", "", ""
+)
+
 -- ---- Conditions enforcement toggle ------------------------
 conditions_enforced = true
 
@@ -1280,7 +1305,9 @@ local function make_toggle(f)
         else
             if conditions_enforced then
                 if f.condition and not condition_ok(f) then return end
-                if f.key == "FUEL_CAP" and fuel_cap_check_done then return end
+                if f.key == "FUEL_CAP"   and fuel_cap_check_done        then return end
+                if f.key == "FUEL_WATER" and fuel_drain_check_done      then return end
+                if f.key == "FUEL_TYPE"  and not fuel_type_pending       then return end
             end
             trigger_failure(f)
         end
@@ -1389,13 +1416,17 @@ function incidents_draw_status()
 
 
     -- green status entries (pre-computed for layout)
-    local show_cap_checked = fuel_cap_check_done
+    local show_cap_checked   = fuel_cap_check_done
+    local show_drain_checked = fuel_drain_check_done
+    local show_type_pending  = fuel_type_pending
     local show_latch_1 = door_available(1) and door_routine.latched_1
     local show_latch_2 = door_available(2) and door_routine.latched_2
 
     -- layout: title + active failures + fuel quantities + green status lines
     local extra_lines = (any_fuel and 1 or 0)
-                      + (show_cap_checked and 1 or 0)
+                      + (show_cap_checked   and 1 or 0)
+                      + (show_drain_checked and 1 or 0)
+                      + (show_type_pending  and 1 or 0)
                       + (show_latch_1 and 1 or 0)
                       + (show_latch_2 and 1 or 0)
     local top = y + 20 + (#active + extra_lines) * 20
@@ -1423,11 +1454,22 @@ function incidents_draw_status()
         cy = cy - 20
     end
 
+    -- orange warning: fuel type risk pending
+    if show_type_pending then
+        graphics.set_color(1.0, 0.6, 0.1, 1)
+        draw_string_Helvetica_18(x, cy, "FUEL TYPE: PENDING")
+        cy = cy - 20
+    end
+
     -- green status lines
-    if show_cap_checked or show_latch_1 or show_latch_2 then
+    if show_cap_checked or show_drain_checked or show_latch_1 or show_latch_2 then
         graphics.set_color(0.3, 1.0, 0.3, 1)
         if show_cap_checked then
             draw_string_Helvetica_18(x, cy, "FUEL CAPS: CHECKED")
+            cy = cy - 20
+        end
+        if show_drain_checked then
+            draw_string_Helvetica_18(x, cy, "FUEL TANKS: DRAINED")
             cy = cy - 20
         end
         if show_latch_1 then
@@ -1468,10 +1510,12 @@ function incidents_tick()
             local f = rnd_target
             -- guard checks: skip (reschedule) if blocked
             local skip = f and (
-                (f.key == "FUEL_CAP"  and (fuel_cap_check_done or not airborne()))
-             or (f.key == "DOOR_OPEN" and not door_has_unlatched())
-             or (f.key == "DOOR_1"   and door_routine.latched_1)
-             or (f.key == "DOOR_2"   and door_routine.latched_2)
+                (f.key == "FUEL_CAP"   and (fuel_cap_check_done or not airborne()))
+             or (f.key == "FUEL_WATER" and fuel_drain_check_done)
+             or (f.key == "FUEL_TYPE"  and not fuel_type_pending)
+             or (f.key == "DOOR_OPEN"  and not door_has_unlatched())
+             or (f.key == "DOOR_1"     and door_routine.latched_1)
+             or (f.key == "DOOR_2"     and door_routine.latched_2)
             )
             if skip then
                 rnd_scheduled = false
@@ -1503,9 +1547,11 @@ function incidents_tick()
                 end
             end
         elseif not failure_is_active(f)
-            and not (f.key == "FUEL_CAP" and (fuel_cap_check_done or not airborne()))
-            and not (f.key == "DOOR_1"   and door_routine.latched_1)
-            and not (f.key == "DOOR_2"   and door_routine.latched_2) then
+            and not (f.key == "FUEL_CAP"   and (fuel_cap_check_done or not airborne()))
+            and not (f.key == "FUEL_WATER" and fuel_drain_check_done)
+            and not (f.key == "FUEL_TYPE"  and not fuel_type_pending)
+            and not (f.key == "DOOR_1"     and door_routine.latched_1)
+            and not (f.key == "DOOR_2"     and door_routine.latched_2) then
             local mtbf, flag = get_mtbf(f)
             if flag ~= "OFF" and mtbf then
                 if math.random() < prob_from_mtbf(mtbf, TICK_INTERVAL) then
@@ -1565,11 +1611,19 @@ function incidents_culprit_tick()
         local live_r = read_fuel_r()
         if (live_l and live_l > fuel_cap_mem_l + 1.0)
         or (live_r and live_r > fuel_cap_mem_r + 1.0) then
-            fuel_cap_check_done = false
+            fuel_cap_check_done   = false
+            fuel_drain_check_done = false
+            fuel_type_pending     = true
             fuel_cap_mem_l = live_l
             fuel_cap_mem_r = live_r
             save_memory()
         end
+    end
+
+    -- ---- Airborne: clear fuel type pending ----
+    if airborne() and fuel_type_pending then
+        fuel_type_pending = false
+        save_memory()
     end
 
     -- ---- External view + on ground + engines off → fuel cap preflight check ----
@@ -1622,8 +1676,10 @@ function incidents_aircraft_check()
     if current ~= "" and current ~= last_icao then
         last_icao = current
         build_active_profile()
-        fuel_cap_mem_l = nil
-        fuel_cap_mem_r = nil
+        fuel_cap_mem_l        = nil
+        fuel_cap_mem_r        = nil
+        fuel_drain_check_done = false
+        fuel_type_pending     = false
         -- reset door routine for new aircraft; do_often tick reads actual sim state within ~100ms
         door_routine.open_1    = false
         door_routine.open_2    = false
