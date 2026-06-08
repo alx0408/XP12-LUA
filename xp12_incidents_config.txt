@@ -71,20 +71,21 @@ PROP_COARSE_1     = DEFAULT
 PROP_COARSE_2     = DEFAULT
 
 # ---- ELECTRICAL --------------------------------------------
-ELEC_BUS1         = DEFAULT
-ELEC_BUS2         = DEFAULT
-GENERATOR_1       = DEFAULT
-GENERATOR_2       = DEFAULT
 BATTERY_1         = DEFAULT
 BATTERY_2         = DEFAULT
-GEN0_LO           = DEFAULT
-GEN0_HI           = DEFAULT
-GEN1_LO           = DEFAULT
-GEN1_HI           = DEFAULT
 BAT0_LO           = DEFAULT
 BAT0_HI           = DEFAULT
 BAT1_LO           = DEFAULT
 BAT1_HI           = DEFAULT
+GENERATOR_1       = DEFAULT
+GENERATOR_2       = DEFAULT
+GEN0_LO           = DEFAULT
+GEN0_HI           = DEFAULT
+GEN1_LO           = DEFAULT
+GEN1_HI           = DEFAULT
+ELEC_BUS1         = DEFAULT
+ELEC_BUS2         = DEFAULT
+
 
 # ---- LIGHTS ------------------------------------------------
 LITES_BEACON      = DEFAULT
