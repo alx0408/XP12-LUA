@@ -63,8 +63,10 @@ local _ref_gspeed    = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_view_ext  = XPLMFindDataRef("sim/graphics/view/view_is_external")
 
 -- ---- Fuel DataRefs (scalar, confirmed working per fuel_leak_test) ----
-local _ref_fuel_l = XPLMFindDataRef("sim/flightmodel/weight/m_fuel1")   -- left  tank
-local _ref_fuel_r = XPLMFindDataRef("sim/flightmodel/weight/m_fuel2")   -- right tank
+local _ref_fuel = {
+    [1] = XPLMFindDataRef("sim/flightmodel/weight/m_fuel1"),   -- tank 1
+    [2] = XPLMFindDataRef("sim/flightmodel/weight/m_fuel2"),   -- tank 2
+}
 
 -- ---- Door DataRef (int[20], writable, index 0=pilot door, 1=copilot) ----
 local _ref_door_sw = XPLMFindDataRef("sim/cockpit2/switches/door_open")
@@ -80,16 +82,11 @@ local function write_door(n, val)
     pcall(XPLMSetDatavi, _ref_door_sw, t, n - 1, 1)
 end
 
-local function read_fuel_l()
-    local ok, v = pcall(XPLMGetDataf, _ref_fuel_l)
+local function read_tank(n)
+    local ok, v = pcall(XPLMGetDataf, _ref_fuel[n])
     return (ok and type(v) == "number") and v or nil
 end
-local function read_fuel_r()
-    local ok, v = pcall(XPLMGetDataf, _ref_fuel_r)
-    return (ok and type(v) == "number") and v or nil
-end
-local function write_fuel_l(v) if _ref_fuel_l then XPLMSetDataf(_ref_fuel_l, v) end end
-local function write_fuel_r(v) if _ref_fuel_r then XPLMSetDataf(_ref_fuel_r, v) end end
+local function write_tank(n, v) if _ref_fuel[n] then XPLMSetDataf(_ref_fuel[n], v) end end
 
 -- ---- Flight condition helpers ------------------------------
 local function airborne()
@@ -151,8 +148,8 @@ local door_routine
 local fuel_cap_check_done   = false  -- true: external-view check done, FUEL_CAP blocked
 local fuel_drain_check_done = false  -- true: drain command done in ext view, FUEL_WATER blocked
 local fuel_type_pending     = false  -- true: refueling detected, FUEL_TYPE can trigger while on ground
-local fuel_cap_mem_l        = nil    -- last engine-off T1 qty (kg) — loaded from memory
-local fuel_cap_mem_r        = nil    -- last engine-off T2 qty (kg) — loaded from memory
+local fuel_snap_1           = nil    -- last engine-off T1 qty (kg) — loaded from memory
+local fuel_snap_2           = nil    -- last engine-off T2 qty (kg) — loaded from memory
 local engine_prev_on        = false  -- for engine-off edge detection
 
 -- ---- Smoke on-fix callback ---------------------------------
@@ -337,22 +334,22 @@ save_memory = function()
         file:write("SMOKE_CULPRIT = " .. smoke_culprit .. "\n")
     end
 
-    -- fuel cap preflight check quantities (engine-off snapshot)
-    if fuel_cap_mem_l then
-        file:write(string.format("FUEL_CAP_T1 = %.2f\n", fuel_cap_mem_l))
+    -- engine-off tank snapshot (used by fuel cap / water / type checks)
+    if fuel_snap_1 then
+        file:write(string.format("TANK1_KG = %.2f\n", fuel_snap_1))
     end
-    if fuel_cap_mem_r then
-        file:write(string.format("FUEL_CAP_T2 = %.2f\n", fuel_cap_mem_r))
+    if fuel_snap_2 then
+        file:write(string.format("TANK2_KG = %.2f\n", fuel_snap_2))
     end
     if fuel_drain_check_done then file:write("FUEL_DRAIN_CHECK = done\n") end
     if fuel_type_pending     then file:write("FUEL_TYPE_PENDING = pending\n") end
 
-    -- fuel leak routine state: 1=left, 2=right, 3=both
+    -- fuel leak routine state: 1=T1, 2=T2, 3=both
     if fuelleak_routine then
         local lv = 0
-        if     fuelleak_routine.active_l and fuelleak_routine.active_r then lv = 3
-        elseif fuelleak_routine.active_l                               then lv = 1
-        elseif fuelleak_routine.active_r                               then lv = 2
+        if     fuelleak_routine.active_1 and fuelleak_routine.active_2 then lv = 3
+        elseif fuelleak_routine.active_1                               then lv = 1
+        elseif fuelleak_routine.active_2                               then lv = 2
         end
         if lv > 0 then
             file:write("FUEL_LEAK = " .. lv .. "\n")
@@ -397,20 +394,20 @@ local function load_memory()
                         smoke_prev_bat   = dr_bat_on
                         smoke_prev_avion = dr_avion
                         smoke_prev_gen   = read_gen_on()
-                    elseif key == "FUEL_CAP_T1" then
-                        fuel_cap_mem_l = tonumber(val)
-                    elseif key == "FUEL_CAP_T2" then
-                        fuel_cap_mem_r = tonumber(val)
+                    elseif key == "TANK1_KG" then
+                        fuel_snap_1 = tonumber(val)
+                    elseif key == "TANK2_KG" then
+                        fuel_snap_2 = tonumber(val)
                     elseif key == "FUEL_DRAIN_CHECK" and val == "done" then
                         fuel_drain_check_done = true
                     elseif key == "FUEL_TYPE_PENDING" and val == "pending" then
                         fuel_type_pending = true
                     elseif key == "FUEL_LEAK" and fuelleak_routine then
-                        -- restore fuel leak routine (1=L, 2=R, 3=both)
+                        -- restore fuel leak routine (1=T1, 2=T2, 3=both)
                         local lv = tonumber(val)
                         if lv and lv >= 1 and lv <= 3 then
-                            fuelleak_routine.active_l = (lv == 1 or lv == 3)
-                            fuelleak_routine.active_r = (lv == 2 or lv == 3)
+                            fuelleak_routine.active_1 = (lv == 1 or lv == 3)
+                            fuelleak_routine.active_2 = (lv == 2 or lv == 3)
                             fuelleak_routine.elapsed  = 0
                             fuel_drain_last           = os.clock()
                         end
@@ -445,22 +442,22 @@ end
 --   snapshot present, no refueling  →  check still valid
 --   no snapshot (first start)  →  save baseline, check invalid
 local function fuel_cap_evaluate_check()
-    local live_l = read_fuel_l()
-    local live_r = read_fuel_r()
-    if fuel_cap_mem_l == nil or fuel_cap_mem_r == nil then
+    local live_1 = read_tank(1)
+    local live_2 = read_tank(2)
+    if fuel_snap_1 == nil or fuel_snap_2 == nil then
         -- first start: no snapshot yet — save current as baseline
         fuel_cap_check_done = false
-        fuel_cap_mem_l = live_l
-        fuel_cap_mem_r = live_r
+        fuel_snap_1 = live_1
+        fuel_snap_2 = live_2
         save_memory()
-    elseif (live_l and live_l > fuel_cap_mem_l + 1.0)
-        or (live_r and live_r > fuel_cap_mem_r + 1.0) then
+    elseif (live_1 and live_1 > fuel_snap_1 + 1.0)
+        or (live_2 and live_2 > fuel_snap_2 + 1.0) then
         -- refueling detected: invalidate checks, set fuel type pending
         fuel_cap_check_done   = false
         fuel_drain_check_done = false
         fuel_type_pending     = true
-        fuel_cap_mem_l = live_l
-        fuel_cap_mem_r = live_r
+        fuel_snap_1 = live_1
+        fuel_snap_2 = live_2
         save_memory()
     else
         -- no refueling since last engine-off: check remains valid
@@ -487,8 +484,8 @@ fuelcap_routine = {
 }
 
 fuelleak_routine = {
-    active_l = false,
-    active_r = false,
+    active_1 = false,
+    active_2 = false,
     elapsed  = 0,
 }
 
@@ -519,17 +516,17 @@ local function stop_fuel_cap()
     fuelcap_routine.elapsed = 0
 end
 
-local function start_fuel_leak(active_l, active_r)
-    fuelleak_routine.active_l = active_l
-    fuelleak_routine.active_r = active_r
+local function start_fuel_leak(active_1, active_2)
+    fuelleak_routine.active_1 = active_1
+    fuelleak_routine.active_2 = active_2
     fuelleak_routine.elapsed  = 0
     fuel_drain_last           = os.clock()
     save_memory()
 end
 
 local function stop_fuel_leak()
-    fuelleak_routine.active_l = false
-    fuelleak_routine.active_r = false
+    fuelleak_routine.active_1 = false
+    fuelleak_routine.active_2 = false
     fuelleak_routine.elapsed  = 0
     save_memory()
 end
@@ -538,7 +535,7 @@ end
 -- Runs do_often (~10×/s). Both routines share the same dt calculation.
 function incidents_fuel_tick()
     local any = fuelcap_routine.active
-                or fuelleak_routine.active_l or fuelleak_routine.active_r
+                or fuelleak_routine.active_1 or fuelleak_routine.active_2
     if not any then return end
 
     local now = os.clock()
@@ -549,55 +546,44 @@ function incidents_fuel_tick()
     if fuelcap_routine.active then
         fuelcap_routine.elapsed = fuelcap_routine.elapsed + dt
         local drain = fuelcap_rate(fuelcap_routine.elapsed) * dt
-        if fuelcap_routine.side == "L" then
-            local cur = read_fuel_l()
-            if cur then
-                if cur <= FUEL_STOP_KG then
-                    stop_fuel_cap()
-                else
-                    write_fuel_l(math.max(FUEL_STOP_KG, cur - drain))
-                end
-            end
-        else
-            local cur = read_fuel_r()
-            if cur then
-                if cur <= FUEL_STOP_KG then
-                    stop_fuel_cap()
-                else
-                    write_fuel_r(math.max(FUEL_STOP_KG, cur - drain))
-                end
+        local cur = read_tank(fuelcap_routine.side)
+        if cur then
+            if cur <= FUEL_STOP_KG then
+                stop_fuel_cap()
+            else
+                write_tank(fuelcap_routine.side, math.max(FUEL_STOP_KG, cur - drain))
             end
         end
     end
 
     -- Fuel Leak routine
-    if fuelleak_routine.active_l or fuelleak_routine.active_r then
+    if fuelleak_routine.active_1 or fuelleak_routine.active_2 then
         fuelleak_routine.elapsed = fuelleak_routine.elapsed + dt
         local drain = fuelleak_rate(fuelleak_routine.elapsed) * dt
 
-        if fuelleak_routine.active_l then
-            local cur = read_fuel_l()
+        if fuelleak_routine.active_1 then
+            local cur = read_tank(1)
             if cur then
                 if cur <= FUEL_STOP_KG then
-                    fuelleak_routine.active_l = false
+                    fuelleak_routine.active_1 = false
                 else
-                    write_fuel_l(math.max(FUEL_STOP_KG, cur - drain))
+                    write_tank(1, math.max(FUEL_STOP_KG, cur - drain))
                 end
             end
         end
-        if fuelleak_routine.active_r then
-            local cur = read_fuel_r()
+        if fuelleak_routine.active_2 then
+            local cur = read_tank(2)
             if cur then
                 if cur <= FUEL_STOP_KG then
-                    fuelleak_routine.active_r = false
+                    fuelleak_routine.active_2 = false
                 else
-                    write_fuel_r(math.max(FUEL_STOP_KG, cur - drain))
+                    write_tank(2, math.max(FUEL_STOP_KG, cur - drain))
                 end
             end
         end
 
         -- both sides drained to stop → clear memory
-        if not fuelleak_routine.active_l and not fuelleak_routine.active_r then
+        if not fuelleak_routine.active_1 and not fuelleak_routine.active_2 then
             save_memory()
         end
     end
@@ -1008,7 +994,7 @@ end
 -- excluded from re-triggering while already running.
 local function failure_is_active(f)
     if f.key == "FUEL_CAP"  then return fuelcap_routine.active end
-    if f.key == "FUEL_LEAK" then return fuelleak_routine.active_l or fuelleak_routine.active_r end
+    if f.key == "FUEL_LEAK" then return fuelleak_routine.active_1 or fuelleak_routine.active_2 end
     if f.key == "DOOR_OPEN" then return door_routine.fail_1 or door_routine.fail_2 end
     if f.key == "DOOR_1"    then return door_routine.fail_1 end
     if f.key == "DOOR_2"    then return door_routine.fail_2 end
@@ -1019,19 +1005,19 @@ end
 local function trigger_failure(f)
     -- FUEL_CAP: start custom drain routine instead of setting DataRef=6
     if f.key == "FUEL_CAP" then
-        start_fuel_cap(math.random() < 0.5 and "L" or "R")
+        start_fuel_cap(math.random() < 0.5 and 1 or 2)
         return
     end
     -- FUEL_LEAK: random side determination, then custom drain routine
     -- 40% left only / 40% right only / 20% both (engine position)
     if f.key == "FUEL_LEAK" then
         local r = math.random()
-        local al, ar
-        if     r < 0.4 then al, ar = true,  false
-        elseif r < 0.8 then al, ar = false, true
-        else                al, ar = true,  true
+        local a1, a2
+        if     r < 0.4 then a1, a2 = true,  false
+        elseif r < 0.8 then a1, a2 = false, true
+        else                a1, a2 = true,  true
         end
-        start_fuel_leak(al, ar)
+        start_fuel_leak(a1, a2)
         return
     end
     -- DOOR_OPEN: dice roll; latch respected when conditions enforced, bypassed when off
@@ -1208,7 +1194,7 @@ create_command(
 function incidents_trigger_all()
     -- check fuel and door routine state in addition to DataRef values
     local any_active = fuelcap_routine.active
-                       or fuelleak_routine.active_l or fuelleak_routine.active_r
+                       or fuelleak_routine.active_1 or fuelleak_routine.active_2
                        or door_routine.open_1 or door_routine.open_2
     for _, f in ipairs(failures) do
         if get_dr(f) > 0 then any_active = true; break end
@@ -1410,16 +1396,16 @@ function incidents_draw_status()
 
     -- add fuel routine entries to active list
     local any_fuel = fuelcap_routine.active
-                     or fuelleak_routine.active_l or fuelleak_routine.active_r
+                     or fuelleak_routine.active_1 or fuelleak_routine.active_2
     if fuelcap_routine.active then
         local rate = fuelcap_rate(fuelcap_routine.elapsed)
-        table.insert(active, string.format("Cap %s: %.2f kg/s↓", fuelcap_routine.side, rate))
+        table.insert(active, string.format("Cap T%d: %.2f kg/s↓", fuelcap_routine.side, rate))
     end
-    if fuelleak_routine.active_l or fuelleak_routine.active_r then
+    if fuelleak_routine.active_1 or fuelleak_routine.active_2 then
         local sides
-        if   fuelleak_routine.active_l and fuelleak_routine.active_r then sides = "L+R"
-        elseif fuelleak_routine.active_l                             then sides = "L"
-        else                                                              sides = "R"
+        if   fuelleak_routine.active_1 and fuelleak_routine.active_2 then sides = "T1+T2"
+        elseif fuelleak_routine.active_1                             then sides = "T1"
+        else                                                              sides = "T2"
         end
         local rate = fuelleak_rate(fuelleak_routine.elapsed)
         table.insert(active, string.format("Leak %s: %.2f kg/s↑", sides, rate))
@@ -1456,8 +1442,8 @@ function incidents_draw_status()
 
     -- fuel tank quantities (shown when any fuel routine is active)
     if any_fuel then
-        local t1 = read_fuel_l()
-        local t2 = read_fuel_r()
+        local t1 = read_tank(1)
+        local t2 = read_tank(2)
         local fmt = function(v) return v and string.format("%.1f", v) or "?" end
         graphics.set_color(1, 0.85, 0.2, 1)
         draw_string_Helvetica_18(x, cy,
@@ -1605,28 +1591,28 @@ end
 
 do_sometimes("incidents_fix_tick()")
 
--- ---- Smoke culprit monitor ---------------------------------
-function incidents_culprit_tick()
+-- ---- State monitor (engine/fuel/preflight checks) ----------
+function incidents_state_tick()
     -- ---- Engine-off detection: save fuel snapshot for refuel detection ----
     local eng_now = engine_on()
     if engine_prev_on and not eng_now then
-        fuel_cap_mem_l = read_fuel_l()
-        fuel_cap_mem_r = read_fuel_r()
+        fuel_snap_1 = read_tank(1)
+        fuel_snap_2 = read_tank(2)
         save_memory()
     end
     engine_prev_on = eng_now
 
     -- ---- Refueling detection: continuous monitor while parked with engine off ----
-    if not airborne() and not eng_now and fuel_cap_mem_l ~= nil and fuel_cap_mem_r ~= nil then
-        local live_l = read_fuel_l()
-        local live_r = read_fuel_r()
-        if (live_l and live_l > fuel_cap_mem_l + 1.0)
-        or (live_r and live_r > fuel_cap_mem_r + 1.0) then
+    if not airborne() and not eng_now and fuel_snap_1 ~= nil and fuel_snap_2 ~= nil then
+        local live_1 = read_tank(1)
+        local live_2 = read_tank(2)
+        if (live_1 and live_1 > fuel_snap_1 + 1.0)
+        or (live_2 and live_2 > fuel_snap_2 + 1.0) then
             fuel_cap_check_done   = false
             fuel_drain_check_done = false
             fuel_type_pending     = true
-            fuel_cap_mem_l = live_l
-            fuel_cap_mem_r = live_r
+            fuel_snap_1 = live_1
+            fuel_snap_2 = live_2
             save_memory()
         end
     end
@@ -1644,7 +1630,12 @@ function incidents_culprit_tick()
         fuel_cap_check_done = true
         inc_trigger_popup("TANK CAP CHECKED")
     end
+end
 
+do_sometimes("incidents_state_tick()")
+
+-- ---- Smoke culprit monitor ---------------------------------
+function incidents_culprit_tick()
     if system_paused then
         smoke_prev_bat   = dr_bat_on
         smoke_prev_avion = dr_avion
@@ -1687,8 +1678,8 @@ function incidents_aircraft_check()
     if current ~= "" and current ~= last_icao then
         last_icao = current
         build_active_profile()
-        fuel_cap_mem_l        = nil
-        fuel_cap_mem_r        = nil
+        fuel_snap_1           = nil
+        fuel_snap_2           = nil
         fuel_drain_check_done = false
         fuel_type_pending     = false
         -- reset door routine for new aircraft; do_often tick reads actual sim state within ~100ms
