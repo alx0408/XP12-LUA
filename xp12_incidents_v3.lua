@@ -1899,7 +1899,15 @@ function incidents_aircraft_check()
         door_routine.latched_2 = false
         door_routine.prev_1    = 0
         door_routine.prev_2    = 0
-        load_memory()   -- restores latches from profile section
+        load_memory()   -- restores latches and failure states from profile section
+        -- resume overvolt cascade if GEN_HI was restored from memory
+        do
+            local f0 = find_failure("GEN0_HI")
+            local f1 = find_failure("GEN1_HI")
+            if     f0 and get_dr(f0) == 6 then start_overvolt(0)
+            elseif f1 and get_dr(f1) == 6 then start_overvolt(1)
+            end
+        end
         fuel_cap_evaluate_check()
     end
 end
