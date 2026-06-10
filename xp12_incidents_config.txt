@@ -73,9 +73,7 @@ PROP_COARSE_2     = DEFAULT
 # ---- ELECTRICAL --------------------------------------------
 BATTERY_1         = DEFAULT
 BATTERY_2         = DEFAULT
-BAT0_LO           = DEFAULT
 BAT0_HI           = DEFAULT
-BAT1_LO           = DEFAULT
 BAT1_HI           = DEFAULT
 GENERATOR_1       = DEFAULT
 GENERATOR_2       = DEFAULT
@@ -247,7 +245,6 @@ GENERATOR_2       = OFF
 BATTERY_2         = OFF
 GEN1_LO           = OFF
 GEN1_HI           = OFF
-BAT1_LO           = OFF
 BAT1_HI           = OFF
 
 # ---- LIGHTS ------------------------------------------------
@@ -443,9 +440,7 @@ GEN0_LO           = OFF
 GEN0_HI           = OFF
 GEN1_LO           = OFF
 GEN1_HI           = OFF
-BAT0_LO           = OFF
 BAT0_HI           = OFF
-BAT1_LO           = OFF
 BAT1_HI           = OFF
 
 # ---- LIGHTS ------------------------------------------------

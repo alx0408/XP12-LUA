@@ -82,6 +82,12 @@ local _ref_fuel = {
     [2] = XPLMFindDataRef("sim/flightmodel/weight/m_fuel2"),   -- tank 2
 }
 
+-- ---- Battery charge DataRefs -------------------------------
+-- battery_charge_watt_hr is float[8], writable; index 0 = main battery.
+-- battery_watt_hr_max is the per-battery full capacity (read-only).
+local _ref_bat_wh     = XPLMFindDataRef("sim/cockpit/electrical/battery_charge_watt_hr")
+local _ref_bat_wh_max = XPLMFindDataRef("sim/aircraft/electrical/battery_watt_hr_max")
+
 -- ---- Door DataRef (int[20], writable, index 0=pilot door, 1=copilot) ----
 local _ref_door_sw = XPLMFindDataRef("sim/cockpit2/switches/door_open")
 
@@ -101,6 +107,22 @@ local function read_tank(n)
     return (ok and type(v) == "number") and v or nil
 end
 local function write_tank(n, v) if _ref_fuel[n] then XPLMSetDataf(_ref_fuel[n], v) end end
+
+-- Battery charge (Wh) — main battery, array index 0
+local function read_bat_wh()
+    if not _ref_bat_wh then return nil end
+    local ok, v = pcall(XPLMGetDatavf, _ref_bat_wh, 0, 1)
+    return (ok and v and v[0]) or nil
+end
+local function write_bat_wh(val)
+    if not _ref_bat_wh then return end
+    pcall(XPLMSetDatavf, _ref_bat_wh, {[0] = val}, 0, 1)
+end
+local function read_bat_wh_max()
+    if not _ref_bat_wh_max then return nil end
+    local ok, v = pcall(XPLMGetDataf, _ref_bat_wh_max)
+    return (ok and type(v) == "number" and v > 0) and v or nil
+end
 
 -- ---- Flight condition helpers ------------------------------
 local function airborne()
@@ -166,6 +188,15 @@ local overvolt_last = 0
 local fuel_cap_check_done   = false  -- true: external-view check done, FUEL_CAP blocked
 local fuel_drain_check_done = false  -- true: drain command done in ext view, FUEL_WATER blocked
 local fuel_type_pending     = false  -- true: refueling detected, FUEL_TYPE can trigger while on ground
+-- Battery charge persistence
+local BAT_LOW_PCT      = 0.25   -- below this fraction of max → "BAT: LOW" warning
+local BAT_RECHARGE_PCT = 0.80   -- "Recharge Bat" command target
+local BAT_RESET_JUMP   = 50     -- Wh: live-vs-snapshot jump above this = X-Plane flight reset
+local BAT_SAVE_CHUNK   = 20     -- Wh: persist follow-charge only every this many Wh
+local bat_snap         = nil    -- last engine-off battery charge (Wh) — loaded from memory
+local bat_saved        = nil    -- last persisted bat_snap, for save throttling
+local bat_low          = false  -- live flag for status display
+
 local fuel_snap_1           = nil    -- last engine-off T1 qty (kg) — loaded from memory
 local fuel_snap_2           = nil    -- last engine-off T2 qty (kg) — loaded from memory
 local engine_prev_on        = false  -- for engine-off edge detection
@@ -359,6 +390,12 @@ save_memory = function()
     if fuel_snap_2 then
         file:write(string.format("TANK2_KG = %.2f\n", fuel_snap_2))
     end
+
+    -- engine-off battery charge snapshot (Wh)
+    if bat_snap then
+        file:write(string.format("BAT_WH = %.2f\n", bat_snap))
+        bat_saved = bat_snap
+    end
     if fuel_drain_check_done then file:write("FUEL_DRAIN_CHECK = done\n") end
     if fuel_type_pending     then file:write("FUEL_TYPE_PENDING = pending\n") end
 
@@ -412,6 +449,9 @@ local function load_memory()
                         smoke_prev_bat   = dr_bat_on
                         smoke_prev_avion = dr_avion
                         smoke_prev_gen   = read_gen_on()
+                    elseif key == "BAT_WH" then
+                        bat_snap  = tonumber(val)
+                        bat_saved = bat_snap
                     elseif key == "TANK1_KG" then
                         fuel_snap_1 = tonumber(val)
                     elseif key == "TANK2_KG" then
@@ -953,9 +993,10 @@ def("GEN0_LO",        "sim/operation/failures/rel_gen0_lo",          "Gen0 V Low
 def("GEN0_HI",        "sim/operation/failures/rel_gen0_hi",          "Gen0 V High",  nil)
 def("GEN1_LO",        "sim/operation/failures/rel_gen1_lo",          "Gen1 V Low",   nil)
 def("GEN1_HI",        "sim/operation/failures/rel_gen1_hi",          "Gen1 V High",  nil)
-def("BAT0_LO",        "sim/operation/failures/rel_bat0_lo",          "Bat0 V Low",   nil)
+-- BAT*_LO removed: native rel_bat*_lo overrides voltage to 23V (useless —
+-- everything still works, and at true 20V it would even RAISE bus voltage).
+-- Battery depletion is handled by the watt-hr persistence logic instead.
 def("BAT0_HI",        "sim/operation/failures/rel_bat0_hi",          "Bat0 V High",  nil)
-def("BAT1_LO",        "sim/operation/failures/rel_bat1_lo",          "Bat1 V Low",   nil)
 def("BAT1_HI",        "sim/operation/failures/rel_bat1_hi",          "Bat1 V High",  nil)
 
 -- ---- LIGHTS ------------------------------------------------
@@ -1426,6 +1467,24 @@ create_command(
     "incidents_overvolt_test()", "", ""
 )
 
+-- ---- Recharge battery -------------------------------------
+function incidents_recharge_bat()
+    local maxv = read_bat_wh_max()
+    if not maxv then return end
+    local target = maxv * BAT_RECHARGE_PCT
+    write_bat_wh(target)
+    bat_snap  = target
+    bat_low   = false
+    save_memory()
+    inc_trigger_popup("RECHARGED")
+end
+
+create_command(
+    "FlyWithLua/Incidents/recharge_bat",
+    "Incidents: recharge battery to 80%",
+    "incidents_recharge_bat()", "", ""
+)
+
 -- ---- Fuel drain preflight check ---------------------------
 function incidents_drain_fuel_tanks()
     if airborne() or engine_on() then return end
@@ -1587,6 +1646,7 @@ function incidents_draw_status()
                       + (show_cap_checked   and 1 or 0)
                       + (show_drain_checked and 1 or 0)
                       + (show_type_pending  and 1 or 0)
+                      + (bat_low and 1 or 0)
                       + (show_latch_1 and 1 or 0)
                       + (show_latch_2 and 1 or 0)
     local top = y + 20 + (#active + extra_lines) * 20
@@ -1618,6 +1678,13 @@ function incidents_draw_status()
     if show_type_pending then
         graphics.set_color(1.0, 0.6, 0.1, 1)
         draw_string_Helvetica_18(x, cy, "FUEL TYPE: PENDING")
+        cy = cy - 20
+    end
+
+    -- orange warning: battery low charge
+    if bat_low then
+        graphics.set_color(1.0, 0.6, 0.1, 1)
+        draw_string_Helvetica_18(x, cy, "BAT: LOW")
         cy = cy - 20
     end
 
@@ -1761,9 +1828,38 @@ function incidents_state_tick()
     if engine_prev_on and not eng_now then
         fuel_snap_1 = read_tank(1)
         fuel_snap_2 = read_tank(2)
+        bat_snap    = read_bat_wh()
         save_memory()
     end
     engine_prev_on = eng_now
+
+    -- ---- Battery charge persistence ----------------------------------
+    -- X-Plane drains the battery natively but resets it to full each flight.
+    -- We persist the engine-off charge and restore it after the reset.
+    -- Distinguish reset (sudden jump to full) from legitimate charging
+    -- (gradual rise via ground power) by the size of the live-vs-snapshot gap.
+    do
+        local live = read_bat_wh()
+        local maxv = read_bat_wh_max()
+        if live then
+            -- write-back only when armed and parked (hands off when paused)
+            if bat_snap ~= nil and not airborne() and not eng_now and not system_paused then
+                local delta = live - bat_snap
+                if delta > BAT_RESET_JUMP then
+                    -- sudden jump = flight-init reset → restore saved charge
+                    write_bat_wh(bat_snap)
+                elseif delta > 0 then
+                    -- gradual rise = ground-power / native charging → follow it
+                    bat_snap = live
+                    if bat_saved == nil or math.abs(bat_snap - bat_saved) >= BAT_SAVE_CHUNK then
+                        save_memory()
+                    end
+                end
+            end
+            -- live low-battery flag for status display (informational, always)
+            if maxv then bat_low = (live < maxv * BAT_LOW_PCT) end
+        end
+    end
 
     -- ---- Refueling detection: continuous monitor while parked with engine off ----
     if not airborne() and not eng_now and fuel_snap_1 ~= nil and fuel_snap_2 ~= nil then
@@ -1887,6 +1983,9 @@ function incidents_aircraft_check()
         build_active_profile()
         fuel_snap_1           = nil
         fuel_snap_2           = nil
+        bat_snap              = nil
+        bat_saved             = nil
+        bat_low               = false
         fuel_drain_check_done = false
         fuel_type_pending     = false
         stop_overvolt()
