@@ -1,8 +1,22 @@
 -- ============================================================
 --  xp12_incidents_v3.lua
---  Custom Failure & Incident System for X-Plane 12  —  V 3.0
---  Aircraft: SimCoders B58 REP
+--  Custom Failure & Incident System for X-Plane 12  —  V 3.1
+--  Aircraft: Laminar Research standard aircraft (C172, SR22, …)
 --  Requires: FlyWithLua NG+
+--
+--  V3.1 changes over V3.0:
+--    - GEN0_HI / GEN1_HI: overvoltage damage cascade (section [2c]).
+--      Avionics (tier 1/2, gated avionics_on) and lights (tier 3,
+--      individual switch DataRef) fail with quadratically increasing
+--      probability over time.  Generator off → cascade stops.
+--      New command: FlyWithLua/Incidents/overvolt_test
+--        toggles 80%-per-minute test mode (active independently of
+--        overvolt state so it can be armed before triggering).
+--    - Renamed: fuelcap_routine.side "L"/"R" → 1/2
+--    - Renamed: incidents_culprit_tick split →
+--        incidents_state_tick  (fuel/preflight/overvolt)
+--        incidents_culprit_tick (smoke only)
+--    - Various internal renames for consistency (see CLAUDE.md)
 --
 --  V3 additions over V2:
 --    - FUEL_CAP:  virtual drain routine, one side, high→decreasing
@@ -143,6 +157,10 @@ local fuel_drain_last = 0
 
 -- Door routine state table; assigned in [2b], referenced in save/load_memory.
 local door_routine
+
+-- Overvolt routine state table; assigned in [2c].
+local overvolt_routine
+local overvolt_last = 0
 
 -- Fuel cap preflight check state
 local fuel_cap_check_done   = false  -- true: external-view check done, FUEL_CAP blocked
@@ -479,7 +497,7 @@ local FUEL_STOP_KG = 0.5   -- both routines stop draining at this level
 -- State tables (forward-declared in [1])
 fuelcap_routine = {
     active  = false,
-    side    = nil,    -- "L" or "R"
+    side    = nil,    -- 1 or 2
     elapsed = 0,      -- seconds since activation
 }
 
@@ -715,6 +733,133 @@ function incidents_door_tick()
 end
 
 do_often("incidents_door_tick()")
+
+
+-- ============================================================
+--  [2c] OVERVOLT ROUTINE
+--  Triggered by GEN0_HI / GEN1_HI failure.
+--  Bus rises to ~31V.  Avionics (tier 1/2) gated on avionics_on;
+--  lights (tier 3) gated on individual switch DataRefs.
+--  Failure probability increases quadratically with exposure time:
+--    p_per_tick = C × elapsed × dt
+--  This gives a Rayleigh-style survival curve — early exposures are
+--  safe, late ones almost certain.
+--  Test mode: flat 80%/min constant rate for all tiers.
+--  Cascade stops when the triggering generator is turned off.
+-- ============================================================
+
+-- Tier probability constants (see survival formula above)
+-- Tier 1: ~80% dead at 60 min   Tier 2: ~48%   Tier 3: ~73%
+local OV_C1        = 2.5e-7
+local OV_C2        = 1.0e-7
+local OV_C3        = 2.0e-7
+local OV_TEST_RATE = 0.0265   -- flat p/s → ~80% dead per 60 s
+
+overvolt_routine = {
+    active  = false,
+    side    = nil,    -- 0 or 1 (generator index, 0-based)
+    elapsed = 0,      -- seconds under overvoltage
+    test    = false,  -- test mode: flat 80%/min
+}
+
+-- Device pool — tier drives the probability constant used
+local overvolt_devices = {
+    -- Tier 1: sensitive digital avionics
+    { key="G_PFD",        tier=1 },
+    { key="G_MFD",        tier=1 },
+    { key="G_GIA1",       tier=1 },
+    { key="G_GIA2",       tier=1 },
+    { key="G_GEA",        tier=1 },
+    { key="MAGNETOMETER", tier=1 },
+    { key="G_ASI",        tier=1 },
+    { key="G_ALT",        tier=1 },
+    { key="G_VVI",        tier=1 },
+    { key="G430_GPS1",    tier=1 },
+    { key="G430_GPS2",    tier=1 },
+    { key="G430_NAV1",    tier=1 },
+    { key="G430_NAV2",    tier=1 },
+    { key="AP_COMPUTER",  tier=1 },
+    -- Tier 2: com/nav and EIS (more robust PSU, lower C)
+    { key="NAVCOM1",      tier=2 },
+    { key="NAVCOM2",      tier=2 },
+    { key="XPNDR",        tier=2 },
+    { key="DME",          tier=2 },
+    { key="ADF1",         tier=2 },
+    { key="MARKER",       tier=2 },
+    { key="WXR_RADAR",    tier=2 },
+    { key="RPM_IND_1",    tier=2 },
+    { key="RPM_IND_2",    tier=2 },
+    { key="MP_IND_1",     tier=2 },
+    { key="MP_IND_2",     tier=2 },
+    { key="CHT_IND_1",    tier=2 },
+    { key="CHT_IND_2",    tier=2 },
+    { key="EGT_IND_1",    tier=2 },
+    { key="EGT_IND_2",    tier=2 },
+    { key="FF_IND_1",     tier=2 },
+    { key="FF_IND_2",     tier=2 },
+    { key="FUEL_P_IND_1", tier=2 },
+    { key="FUEL_P_IND_2", tier=2 },
+    { key="OIL_P_IND_1",  tier=2 },
+    { key="OIL_P_IND_2",  tier=2 },
+    { key="OIL_T_IND_1",  tier=2 },
+    { key="OIL_T_IND_2",  tier=2 },
+    -- Tier 3: lights — individually gated on switch DataRef
+    { key="LITES_BEACON",  tier=3 },
+    { key="LITES_NAV",     tier=3 },
+    { key="LITES_STROBE",  tier=3 },
+    { key="LITES_TAXI",    tier=3 },
+    { key="LITES_LANDING", tier=3 },
+    { key="LITES_INST",    tier=3 },
+    { key="LITES_COCKPIT", tier=3 },
+}
+
+-- Light "is on" DataRef map — cached refs filled by init_overvolt_refs()
+local overvolt_lite_refs = {
+    LITES_BEACON  = { path="sim/cockpit/electrical/beacon_lights_on",     float=false },
+    LITES_NAV     = { path="sim/cockpit/electrical/nav_lights_on",        float=false },
+    LITES_STROBE  = { path="sim/cockpit/electrical/strobe_lights_on",     float=false },
+    LITES_TAXI    = { path="sim/cockpit/electrical/taxi_light_on",        float=false },
+    LITES_LANDING = { path="sim/cockpit/electrical/landing_lights_on",    float=false },
+    LITES_INST    = { path="sim/cockpit/electrical/instrument_brightness", float=true  },
+    LITES_COCKPIT = { path="sim/cockpit/electrical/cockpit_lights",       float=true  },
+}
+
+local function init_overvolt_refs()
+    for _, entry in pairs(overvolt_lite_refs) do
+        entry.ref = XPLMFindDataRef(entry.path)
+    end
+end
+
+local function overvolt_lite_on(key)
+    local e = overvolt_lite_refs[key]
+    if not e or not e.ref then return false end
+    if e.float then
+        local ok, v = pcall(XPLMGetDataf, e.ref)
+        return ok and (v or 0) > 0
+    else
+        local ok, v = pcall(XPLMGetDatai, e.ref)
+        return ok and v == 1
+    end
+end
+
+local function read_gen_side(side)   -- side = 0 or 1
+    if not _ref_gen_on then return 0 end
+    local v = XPLMGetDatavi(_ref_gen_on, side, 1)
+    return (v and v[side]) or 0
+end
+
+local function start_overvolt(side)
+    overvolt_routine.active  = true
+    overvolt_routine.side    = side
+    overvolt_routine.elapsed = 0
+end
+
+local function stop_overvolt()
+    overvolt_routine.active  = false
+    overvolt_routine.side    = nil
+    overvolt_routine.elapsed = 0
+    overvolt_routine.test    = false
+end
 
 
 -- ============================================================
@@ -1037,6 +1182,9 @@ local function trigger_failure(f)
     if f.key == "DOOR_2" then if conditions_enforced and door_routine.latched_2 then return end; start_door_open(2); return end
     set_dr(f, 6)
     save_memory()
+    -- GEN0_HI / GEN1_HI: start overvoltage damage cascade
+    if f.key == "GEN0_HI" then start_overvolt(0) end
+    if f.key == "GEN1_HI" then start_overvolt(1) end
     -- cascade followup (e.g. engine fire → smoke)
     if f.on_trigger and f.on_trigger.followup then
         for _, entry in ipairs(f.on_trigger.followup) do
@@ -1095,6 +1243,8 @@ local function reset_failure(f)
     end
     if get_dr(f) > 0 then
         set_dr(f, 0)
+        if f.key == "GEN0_HI" and overvolt_routine.side == 0 then stop_overvolt() end
+        if f.key == "GEN1_HI" and overvolt_routine.side == 1 then stop_overvolt() end
         save_memory()
     end
 end
@@ -1173,6 +1323,7 @@ function incidents_reset_profile()
     memory_enabled = false
     for _, f in ipairs(failures) do reset_failure(f) end
     smoke_culprit = nil
+    stop_overvolt()
     door_routine.latched_1 = false
     door_routine.latched_2 = false
     memory_enabled = was_enabled
@@ -1261,6 +1412,18 @@ create_command(
     "FlyWithLua/Incidents/latch_all_doors",
     "Incidents: toggle latch all available doors",
     "incidents_latch_all_doors()", "", ""
+)
+
+-- ---- Overvolt test mode ------------------------------------
+function incidents_overvolt_test()
+    overvolt_routine.test = not overvolt_routine.test
+    inc_trigger_popup(overvolt_routine.test and "OV TEST: ON" or "OV TEST: OFF")
+end
+
+create_command(
+    "FlyWithLua/Incidents/overvolt_test",
+    "Incidents: toggle overvolt test mode (80%/min for all tiers)",
+    "incidents_overvolt_test()", "", ""
 )
 
 -- ---- Fuel drain preflight check ---------------------------
@@ -1630,6 +1793,50 @@ function incidents_state_tick()
         fuel_cap_check_done = true
         inc_trigger_popup("TANK CAP CHECKED")
     end
+
+    -- ---- Overvolt damage cascade ----------------------------------------
+    local ov_now = os.clock()
+    local ov_dt  = math.min(ov_now - overvolt_last, 2.0)
+    overvolt_last = ov_now
+
+    if overvolt_routine.active then
+        -- cascade stops when the pilot turns off the triggering generator
+        if overvolt_routine.side ~= nil and read_gen_side(overvolt_routine.side) == 0 then
+            stop_overvolt()
+        else
+            overvolt_routine.elapsed = overvolt_routine.elapsed + ov_dt
+            local elapsed = overvolt_routine.elapsed
+            local avion   = (dr_avion == 1)
+
+            for _, dev in ipairs(overvolt_devices) do
+                local f = find_failure(dev.key)
+                if f and get_dr(f) ~= 6 then
+                    local powered = false
+                    if dev.tier == 1 or dev.tier == 2 then
+                        powered = avion
+                    else   -- tier 3: individual light switch
+                        powered = overvolt_lite_on(dev.key)
+                    end
+                    if powered then
+                        local p
+                        if overvolt_routine.test then
+                            p = OV_TEST_RATE * ov_dt
+                        elseif dev.tier == 1 then
+                            p = OV_C1 * elapsed * ov_dt
+                        elseif dev.tier == 2 then
+                            p = OV_C2 * elapsed * ov_dt
+                        else
+                            p = OV_C3 * elapsed * ov_dt
+                        end
+                        if math.random() < p then
+                            set_dr(f, 6)
+                            save_memory()
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 do_sometimes("incidents_state_tick()")
@@ -1682,6 +1889,7 @@ function incidents_aircraft_check()
         fuel_snap_2           = nil
         fuel_drain_check_done = false
         fuel_type_pending     = false
+        stop_overvolt()
         -- reset door routine for new aircraft; do_often tick reads actual sim state within ~100ms
         door_routine.open_1    = false
         door_routine.open_2    = false
@@ -1701,6 +1909,7 @@ do_sometimes("incidents_aircraft_check()")
 -- ---- Bootstrap ---------------------------------------------
 load_config()
 init_refs()
+init_overvolt_refs()
 build_active_profile()
 
 for _, f in ipairs(failures) do
