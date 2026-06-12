@@ -313,6 +313,10 @@ local function build_active_profile()
             end
         end
     end
+    cfg.overvolt_blocked = {}
+    for k, v in pairs(cfg.active_failures) do
+        if v.mtbf == "OFF" then cfg.overvolt_blocked[k] = true end
+    end
 end
 
 local function prob_from_mtbf(mtbf_hours, interval_sec)
@@ -843,6 +847,7 @@ local overvolt_devices = {
     { key="OIL_P_IND_2",  tier=2 },
     { key="OIL_T_IND_1",  tier=2 },
     { key="OIL_T_IND_2",  tier=2 },
+    { key="BATTERY_1",    tier=2 },
     -- Tier 3: lights — individually gated on switch DataRef
     { key="LITES_BEACON",  tier=3 },
     { key="LITES_NAV",     tier=3 },
@@ -996,8 +1001,10 @@ def("GEN1_HI",        "sim/operation/failures/rel_gen1_hi",          "Gen1 V Hig
 -- BAT*_LO removed: native rel_bat*_lo overrides voltage to 23V (useless —
 -- everything still works, and at true 20V it would even RAISE bus voltage).
 -- Battery depletion is handled by the watt-hr persistence logic instead.
-def("BAT0_HI",        "sim/operation/failures/rel_bat0_hi",          "Bat0 V High",  nil)
-def("BAT1_HI",        "sim/operation/failures/rel_bat1_hi",          "Bat1 V High",  nil)
+-- BAT*_HI removed: forces bus to 31V regardless of actual watt-hr state,
+-- so devices keep running even with Wh=0. Broken simulation behaviour.
+-- Battery physical damage from overvoltage is covered by BATTERY_1 in the
+-- GEN_HI overvoltage cascade (Tier 2).
 
 -- ---- LIGHTS ------------------------------------------------
 def("LITES_BEACON",   "sim/operation/failures/rel_lites_beac",       "Beacon",       nil)
@@ -1642,11 +1649,13 @@ function incidents_draw_status()
     local show_latch_2 = door_available(2) and door_routine.latched_2
 
     -- layout: title + active failures + fuel quantities + green status lines
+    local show_ov_test = overvolt_routine.active and overvolt_routine.test
     local extra_lines = (any_fuel and 1 or 0)
                       + (show_cap_checked   and 1 or 0)
                       + (show_drain_checked and 1 or 0)
                       + (show_type_pending  and 1 or 0)
                       + (bat_low and 1 or 0)
+                      + (show_ov_test and 1 or 0)
                       + (show_latch_1 and 1 or 0)
                       + (show_latch_2 and 1 or 0)
     local top = y + 20 + (#active + extra_lines) * 20
@@ -1685,6 +1694,13 @@ function incidents_draw_status()
     if bat_low then
         graphics.set_color(1.0, 0.6, 0.1, 1)
         draw_string_Helvetica_18(x, cy, "BAT: LOW")
+        cy = cy - 20
+    end
+
+    -- orange warning: overvoltage test mode active
+    if show_ov_test then
+        graphics.set_color(1.0, 0.6, 0.1, 1)
+        draw_string_Helvetica_18(x, cy, "OVERVOLTAGE TEST MODE")
         cy = cy - 20
     end
 
@@ -1906,7 +1922,7 @@ function incidents_state_tick()
 
             for _, dev in ipairs(overvolt_devices) do
                 local f = find_failure(dev.key)
-                if f and get_dr(f) ~= 6 then
+                if f and not cfg.overvolt_blocked[dev.key] and get_dr(f) ~= 6 then
                     local powered = false
                     if dev.tier == 1 or dev.tier == 2 then
                         powered = avion

@@ -73,8 +73,6 @@ PROP_COARSE_2     = DEFAULT
 # ---- ELECTRICAL --------------------------------------------
 BATTERY_1         = DEFAULT
 BATTERY_2         = DEFAULT
-BAT0_HI           = DEFAULT
-BAT1_HI           = DEFAULT
 GENERATOR_1       = DEFAULT
 GENERATOR_2       = DEFAULT
 GEN0_LO           = DEFAULT
@@ -233,6 +231,8 @@ ELE_FUEL_PMP_2    = OFF
 FUEL_FLOW_2       = OFF
 OIL_PUMP_2        = OFF
 OIL_PRESS_LO_2    = OFF
+AIRFLOW_ENG2      = OFF
+FUEL_BLOCK_2      = OFF
 
 # ---- PROPELLERS --------------------------------------------
 PROP_FINE_1       = OFF
@@ -245,7 +245,7 @@ GENERATOR_2       = OFF
 BATTERY_2         = OFF
 GEN1_LO           = OFF
 GEN1_HI           = OFF
-BAT1_HI           = OFF
+ELEC_BUS2         = OFF
 
 # ---- LIGHTS ------------------------------------------------
 
@@ -272,8 +272,9 @@ G_GIA2            = OFF
 G_GEA             = OFF
 MAGNETOMETER      = OFF
 WXR_RADAR         = OFF
-NAVCOM1           = OFF
-NAVCOM2           = OFF
+G430_NAV1         = OFF
+G430_NAV2         = OFF
+DME               = OFF
 RPM_IND_2         = OFF
 MP_IND_1          = OFF
 MP_IND_2          = OFF
@@ -440,8 +441,6 @@ GEN0_LO           = OFF
 GEN0_HI           = OFF
 GEN1_LO           = OFF
 GEN1_HI           = OFF
-BAT0_HI           = OFF
-BAT1_HI           = OFF
 
 # ---- LIGHTS ------------------------------------------------
 

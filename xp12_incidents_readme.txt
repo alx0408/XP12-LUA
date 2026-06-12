@@ -24,8 +24,8 @@ manager with the following key differences:
      cockpit smoke). The native system requires manual reset.
 
   5. Memory — states persist across sessions in a profile memory file (except environmental failure).
-     The aircraft resumes exactly where it left off.
-
+     The aircraft resumes exactly where it left off. Battery charge (watt-hours) is saved at
+     engine-off and restored on the next session.
   6. Aircraft profiles — the config file defines failure sets per aircraft ICAO
      code. On load the script reads the aircraft ICAO and applies the matching
      profile. All settings in a profile override only those entries listed;
@@ -65,6 +65,9 @@ Status display special entries (for guards or pending conditions):
   "FUEL TANKS: DRAINED" (green)  Drain check done — FUEL_WATER blocked.
   "FUEL CAPS: CHECKED"  (green)  Cap check done — FUEL_CAP blocked.
   "DOOR 1/2: LATCHED"   (green)  Door latch guard active.
+  "BAT: LOW"            (orange) Battery charge below 25 % of maximum capacity.
+  "OVERVOLTAGE TEST MODE" (orange) Cascade running in accelerated test mode
+                                 (≈80 % failure probability per minute).
 
 Global commands:
   FlyWithLua/Incidents/toggle system       Pause / resume all automatic triggering.
@@ -79,7 +82,12 @@ Global commands:
                                            in external view with engine off.
                                            Blocks FUEL_WATER for that flight.
                                            Invalidated when refueling is detected.
-  FlyWithLua/Incidents/drain_fuel_tanks    Manually toggle Fuel Tank Check status.                              
+  FlyWithLua/Incidents/recharge_bat        Recharge battery to 80 % of maximum
+                                           capacity. Alternative to native ground
+                                           power. Popup "Recharged" confirms.
+  FlyWithLua/Incidents/overvolt_test       Accelerated overvoltage test — raises
+                                           cascade probability to ≈80 % per minute
+                                           for all tiers. Test / debug only.
 
 Per-failure commands (one per failure):
   FlyWithLua/Incidents/<failure_key_lowercase>
@@ -330,24 +338,64 @@ Effect:    Battery failure. If generator is also off or fails subsequently,
            complete electrical shutdown follows.
 Note:      Even though battery fails, still there might be volts indicated.
 
-BAT0_LO / BAT0_HI / BAT1_LO / BAT1_HI  ##checked
----------------------------------------
-Effect:    Battery voltage out of range.
-           Low voltage may not be noticed if generator is active.
-           Hi voltage: AMP decreases/floats significantly. BAT discharges.
-Note:      BAT_HI may result as follow-up of generator failure.
+Note:      BAT0_LO / BAT1_LO and BAT0_HI / BAT1_HI have been removed from the
+           script. The voltage-override DataRefs are broken in X-Plane: BAT_HI
+           forces the bus to 31 V regardless of actual watt-hour state, so all
+           devices keep running even with Wh = 0 — the failure produces no
+           realistic consequence. Battery damage from overvoltage is modelled
+           instead via BATTERY_1 in the GEN_HI overvoltage cascade (Tier 2).
+           Battery depletion from under-voltage is handled by the watt-hour
+           persistence system (see below).
 
 GENERATOR_1 / GENERATOR_2 ##checked
 --------------------------
 Effect:    Generator  failure. Loss of volts.
            Ammeter shows discharge. Battery becomes sole power source.
 
-GEN0_LO / GEN0_HI / GEN1_LO / GEN1_HI ##checked
----------------------------------------
-Effect:    Generator voltage out of normal range (low or high).
-           Low voltage may cause under-voltage on avionics; AMP decreases, BAT discharges.
-           High voltage risks equipment damage; AMP increases, BAT overcharges.
-Note:      Avionics can still run briefly at elevated battery voltage (≈32V).
+GEN0_LO / GEN1_LO
+-----------------
+Effect:    Generator voltage low. AMP meter shows discharge; battery becomes
+           the sole power source and drains. If the engine continues to run
+           with GEN_LO active, battery charge will deplete within the session.
+           The depleted charge is saved at engine-off and persists to the next
+           flight — the battery may not have enough power for a restart.
+
+GEN0_HI / GEN1_HI — OVERVOLTAGE CASCADE
+-----------------------------------------
+Effect:    Generator voltage high. Bus rises to ≈31 V. AMP increases,
+           battery overcharges. BAT_HI appears as a display consequence.
+
+           The script runs a time-dependent damage cascade for all powered
+           avionics on the affected bus. Probability of device failure
+           increases quadratically with elapsed time (Rayleigh model):
+           very low in the first minute, likely after 60 min, certain by ~5 h.
+           Only devices that are currently powered and not already failed
+           can be damaged. Devices are grouped into three tiers:
+
+             Tier 1 (most vulnerable — glass cockpit / navigation):
+               G1000 PFD, MFD, GIA1, GIA2, GEA, Magnetometer,
+               G1000 ASI / ALT / VVI, G430 GPS1 / GPS2,
+               G430 NAV1 / NAV2, Autopilot computer.
+
+             Tier 2 (moderately vulnerable — radios / engine instruments /
+               battery):
+               NAVCOM1 / NAVCOM2, Transponder, DME, ADF1, Marker beacon,
+               Weather radar, RPM / MP / CHT / EGT / FF / Fuel-P /
+               Oil-P / Oil-T indicators (engines 1 and 2), Battery 1.
+
+             Tier 3 (least vulnerable — lights):
+               Beacon, Nav, Strobe, Taxi, Landing, Instrument, Cockpit.
+
+           The cascade starts immediately when GEN_HI is triggered and
+           resumes after an aircraft reload if GEN_HI was active in memory.
+           Resetting GEN_HI stops the cascade; already-failed devices remain.
+
+Note:      DO-160 tolerance for 28 V avionics is approximately 32 V for a
+           limited duration — this is why the cascade starts slowly.
+           When BATTERY_1 fails in the cascade, the battery is disconnected
+           from the bus. With the generator still running, devices continue
+           to operate; loss of power only occurs if the generator also fails
+           or is switched off.
 
 ELEC_BUS1 / ELEC_BUS2 ##checked
 ----------------------
@@ -355,9 +403,26 @@ Effect:    Main or secondary electrical bus failure.
            All equipment on that bus loses power.
 
 
-Note: Laminar aircraft may not be modeled precisely in detail. i.a. GEN HI overcharging may not effect BAT volts.
+BATTERY CHARGE PERSISTENCE
+--------------------------
+X-Plane resets battery charge to full at every flight start. The script
+overrides this by saving the watt-hour value at engine-off and restoring it
+on the next session:
 
-# we need to develop failure chains.
+  - Save:    When engine transitions from running to off, current charge is
+             written to the memory file.
+  - Restore: On script load or aircraft change, the saved value is written
+             back. A sudden jump of more than 50 Wh (X-Plane reset) triggers
+             the restore; a gradual rise (ground power charging) is followed
+             legitimately.
+  - Warning: When charge drops below 25 % of maximum, "BAT: LOW" appears in
+             the status display in orange.
+  - Cure:    Connect native ground power (X-Plane handles the charge rate),
+             or use the command FlyWithLua/Incidents/recharge_bat to jump
+             directly to 80 % capacity. Reset profile also resets battery.
+
+Note: Laminar aircraft may not model GEN HI overcharging of battery voltage
+precisely. BAT volts display behavior may vary.
 
 Note: All electrical failures are disabled for the B58 (SimCoders REP manages
 the entire electrical system). See aircraft limitations.
@@ -462,9 +527,10 @@ AHZ_COPILOT     Copilot artificial horizon fails.
 G430_GPS1       GPS unit 1 fails completely — no moving map, no navigation.
 G430_GPS2       GPS unit 2 fails completely.
 G430_NAV1       NAV1 radio tuning fails — COM and NAV frequencies cannot be
-                changed. Note: in installations where a GPS device replaces
-                the NAV radio, this may have no effect.
-G430_NAV2       NAV2 radio tuning fails.
+                changed. GPS navigation continues to function normally; only
+                manual frequency tuning is locked. The failure may go unnoticed
+                until the pilot needs to change a COM or NAV frequency.
+G430_NAV2       NAV2 radio tuning fails. Same effect as G430_NAV1.
 
 --- G1000 (Garmin integrated glass cockpit) ---
 
@@ -496,6 +562,7 @@ NAVCOM2         NAV/COM 2 radio fails.
 ADF1            ADF receiver fails. Needle spins or parks.
 DME             DME unit fails. Distance readout lost.
 XPNDR           Transponder fails. No ATC replies.
+Note:      No effect on the C172 — transponder remains active.
 MARKER          Marker beacon receiver fails.
 STALL_WARN      Stall warning system (horn or stick shaker) fails silently.
 GEAR_WARN       Gear warning horn muted.
