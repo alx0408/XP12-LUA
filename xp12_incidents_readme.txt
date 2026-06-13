@@ -92,28 +92,28 @@ Global commands:
                                            same conditions as auto triggers.
   FlyWithLua/Incidents/latch_all_doors     Latch all available doors. Toggle:
                                            if all already latched, unlatches all.
-  FlyWithLua/Incidents/fuelcap_check       Toggle fuel cap AND drain preflight
-                                           checks on/off together. Both guards set
-                                           or cleared in sync. Cap check also
-                                           triggers automatically via external view
-                                           (see FUEL_CAP). Drain check also
-                                           settable via drain_fuel_tanks command.
   FlyWithLua/Incidents/drain_fuel_tanks    Fuel drain preflight check. Only works
                                            in external view with engine off.
                                            Blocks FUEL_WATER for that flight.
                                            Records the sim date (local_date_days).
                                            Expires the next sim day.
+  FlyWithLua/Incidents/fuelcap_check       Toggle fuel cap AND drain preflight
+                                           checks on/off together. Both guards set
+                                           or cleared in sync. Cap check also
+                                           triggers automatically via external view
+                                           (see FUEL_CAP). Drain check also
+                                           settable via drain_fuel_tanks command.                                         
   FlyWithLua/Incidents/recharge_bat        Recharge battery to 80 % of maximum
                                            capacity. Alternative to native ground
-                                           power. Popup "Recharged" confirms.
-  FlyWithLua/Incidents/toggle_threats      Show / hide threats and failures in the
-                                           status display. Guards (green) are always
-                                           visible. Default: HIDDEN.
+                                           power. Popup "Recharged" confirms.                                         
   FlyWithLua/Incidents/overvolt_test       Accelerated overvoltage test — raises
                                            cascade probability to ≈80 % per minute
                                            for all tiers. Test / debug only.
                                            Active state shown in status display
                                            (orange, always visible). No popup.
+  FlyWithLua/Incidents/toggle_threats      Show / hide threats and failures in the
+                                           status display. Guards (green) are always
+                                           visible. Default: HIDDEN.                                           
 
 Per-failure commands (one per failure):
   FlyWithLua/Incidents/<failure_key_lowercase>
@@ -125,8 +125,10 @@ Per-failure commands (one per failure):
   Per-failure will then trigger unconditional.
 
 
+==============================================================================
 AIRCRAFT PROFILES AND OVERRIDE LOGIC
---------------------------------------
+==============================================================================
+
 The config file (xp12_incidents_config.txt) contains one [DEFAULT] section
 and one section per supported aircraft. Each profile entry can be:
 
@@ -159,6 +161,48 @@ CONDITIONS:
   on ground         — on the ground
   ground_roll       — on the ground, rolling (speed > 15 kn)
   airborne          — aircraft must be in the air
+
+
+MTBF STATISTICAL ADJUSTMENTS:
+
+The following failures use individually configured MTBF values that deviate
+from the global DEFAULT_MTBF. Values are derived from FAA/NTSB statistical
+data and adjusted to account for failure causes that are already modelled
+independently by other failures in this script.
+
+  Failure key(s)        MTBF (h)   Basis
+  -----------------------------------------------------------------------
+  ENG_FAIL_1/2            9,000    See derivation note below.
+  ENG_FIRE_1/2          180,000    Engine fires are extremely rare in GA;
+                                   high value keeps this as a near-manual-
+                                   only event.
+  FUEL_PUMP_1/2          25,600    FAA mechanical failure statistics for
+                                   engine-driven fuel pumps.
+  OIL_PUMP_1/2           80,000    FAA / manufacturer data for oil pumps.
+  MAG_L1/R1/L2/R2        54,000    FAA magneto service difficulty reports.
+  VACUUM_1/2                500    Statistical failure rate for vacuum pumps
+                                   is significantly higher than DEFAULT_MTBF
+                                   implies; value reflects actual field data.
+  GENERATOR_1/2           2,000    Statistical failure rate for alternators /
+                                   generators is significantly higher than
+                                   DEFAULT_MTBF; value reflects field data.
+
+ENG_FAIL — Derivation
+  FAA data places the overall piston-GA engine failure MTBF at approximately
+  3,200 h. However, nearly 50 % of all reported engine failures are
+  attributable to human-factor fuel events — fuel exhaustion, fuel
+  starvation, wrong fuel type, and fuel contamination. These causes are
+  modelled separately in this script (FUEL_CAP, FUEL_WATER, FUEL_TYPE,
+  FUEL_PUMP_LO, FUEL_BLOCK). Removing this share from the raw statistic
+  doubles the effective MTBF for the remaining mechanical failures to
+  approximately 6,400 h.
+  Additional failure modes that can lead to engine stoppage — magneto
+  failure, oil pressure loss, airflow restriction — are each modelled
+  independently as well (MAG, OIL_PUMP, OIL_PRESS_LO, AIRFLOW). Excluding
+  their statistical contribution yields the configured value of 9,000 h,
+  which represents the residual purely-mechanical engine failure rate after
+  all separately-modelled contributors have been removed.
+
 
 ==============================================================================
  ENVIRONMENT FAILURES
@@ -280,38 +324,35 @@ Effect:    Engine fire.
            Smoke from engine fire has no fix.
 Condition: Engine running.
 
-STARTER_1 / STARTER_2 ##checked
+STARTER_1 / STARTER_2
 ----------------------
 Effect:    Starter motor fails. Engine cannot be cranked. 
 
-MAG_L1 / MAG_L2 / MAG_R1 / MAG_R2  ##checked 
+MAG_L1 / MAG_L2 / MAG_R1 / MAG_R2
 -----------------------------------
 Effect:    Left or right magneto failure on engine 1 or 2. 
            RPM drop on the affected engine; massive drop during magneto check.
 
-FUEL_PUMP_LO_1 / FUEL_PUMP_LO_2 ##checked
+FUEL_PUMP_LO_1 / FUEL_PUMP_LO_2
 ---------------------------------
 Effect:    Fuel pump low pressure — pump runs but produces insufficient pressure.
            Causes float in fuel flow and RPM. 
 
-FUEL_PUMP_1 / FUEL_PUMP_2 ##checked; exactly same effect as engine failure.
+FUEL_PUMP_1 / FUEL_PUMP_2
 --------------------------
 Effect:    Mechanical (engine-driven) fuel pump failure.
            Engines dies.
 
-ELE_FUEL_PMP_1 / ELE_FUEL_PMP_2 ##checked
+ELE_FUEL_PMP_1 / ELE_FUEL_PMP_2
 ---------------------------------
 Effect:    Electric fuel (boost) pump failure. 
 
-FUEL_FLOW_1 / FUEL_FLOW_2 ##checked; check delete as nearly the same aus fuel pump lo
+FUEL_FLOW_1 / FUEL_FLOW_2
 --------------------------
 Effect:    Irregular fuel supply causing flow fluctuations.
-           Causes similar float in fuel flow and RPM like fuel pump LO. 
-
-FUEL_BLOCK_1 / FUEL_BLOCK_2 ##checked. no obvious effect. maybe longterm? check delete
-----------------------------
-Effect:    Fuel filter or line blockage.
-           Restricts or stops fuel flow to the engine. 
+           Causes similar float in fuel flow and RPM like fuel pump LO.
+           This failure represents other icurrences, i.e. blockage.
+Note:      FUEL_BLOCK_1/2 have been removed from the script due to ineffectiveness.
 
 FUEL_LEAK
 ---------
@@ -322,16 +363,14 @@ Effect:    Custom failure — active fuel leak. Side determined randomly:
            State is memory-persistent — survives sessions.
 Condition: Engine running.
 
-OIL_PUMP_1 / OIL_PUMP_2  ##checked; realistic?
+OIL_PUMP_1 / OIL_PUMP_2
 ------------------------
 Effect:    Oil pump failure. Oil pressure will drop to zero.
            Rise in oil temperature, significant loss of power.
+Note:      OIL_PRESS_LO_1/2 have been removed from the script due to ineffectiveness.
 
-OIL_PRESS_LO_1 / OIL_PRESS_LO_2   ##checked; no obvious effect. maybe longterm? check delete
-----------------------------------
-Effect:    Low oil pressure warning / reduced lubrication.
 
-AIRFLOW_ENG1 / AIRFLOW_ENG2 ##checked
+AIRFLOW_ENG1 / AIRFLOW_ENG2
 ----------------------------
 Effect:    Airflow restriction to the engine (induction system).
            Loss of power, significant drop in EGT.
@@ -357,9 +396,10 @@ Effect:    Propeller governor fails toward coarse pitch. Inability to achieve
  ELECTRICAL FAILURES
 ==============================================================================
 
-Note:      Engine failures do not work on the B58 (SimCoders REP).
+Note: All electrical failures are disabled for the B58 (SimCoders REP manages
+the entire electrical system). See aircraft limitations.
 
-BATTERY_1 / BATTERY_2 ##checked
+BATTERY_1 / BATTERY_2
 ----------------------
 Effect:    Battery failure. If generator is also off or fails subsequently,
            complete electrical shutdown follows.
@@ -374,7 +414,7 @@ Note:      BAT0_LO / BAT1_LO and BAT0_HI / BAT1_HI have been removed from the
            Battery depletion from under-voltage is handled by the watt-hour
            persistence system (see below).
 
-GENERATOR_1 / GENERATOR_2 ##checked
+GENERATOR_1 / GENERATOR_2
 --------------------------
 Effect:    Generator  failure. Loss of volts.
            Ammeter shows discharge. Battery becomes sole power source.
@@ -423,6 +463,15 @@ Note:      DO-160 tolerance for 28 V avionics is approximately 32 V for a
            to operate; loss of power only occurs if the generator also fails
            or is switched off.
 
+ELEC_BUS1 / ELEC_BUS2
+----------------------
+Effect:    Main or secondary electrical bus failure.
+           All equipment on that bus loses power.
+
+==============================================================================
+ADDITIONAL ELECTRIC FAILURE CHAINS
+==============================================================================
+
 AVIONICS-ON GENERATOR TRANSITION — BUS SPIKE DAMAGE
 ----------------------------------------------------
 Effect:    Switching the avionics master ON before the generator is stable
@@ -442,12 +491,6 @@ Effect:    Switching the avionics master ON before the generator is stable
 Note:      Only active for generators whose GEN_HI failure is not profile-OFF.
            The B58 (all electrical OFF) is therefore excluded entirely.
 
-ELEC_BUS1 / ELEC_BUS2 ##checked
-----------------------
-Effect:    Main or secondary electrical bus failure.
-           All equipment on that bus loses power.
-
-
 BATTERY CHARGE PERSISTENCE
 --------------------------
 X-Plane resets battery charge to full at every flight start. The script
@@ -466,11 +509,6 @@ on the next session:
              or use the command FlyWithLua/Incidents/recharge_bat to jump
              directly to 80 % capacity. Reset profile also resets battery.
 
-Note: Laminar aircraft may not model GEN HI overcharging of battery voltage
-precisely. BAT volts display behavior may vary.
-
-Note: All electrical failures are disabled for the B58 (SimCoders REP manages
-the entire electrical system). See aircraft limitations.
 
 ==============================================================================
  LIGHT FAILURES
@@ -588,8 +626,7 @@ AHRS1 / AHRS2             Attitude and heading reference system fails. Attitude,
                           (not fitted on single-engine G1000 aircraft).
 
 Note: G1000 failures (including ADR and AHRS) are only active on aircraft
-      equipped with G1000. ADR2 and AHRS2 are disabled for single-engine
-      G1000 aircraft (C172, SR22). All G1000 failures are disabled for the B58.
+      equipped with G1000. All G1000 failures are disabled for the B58.
 
 --- Engine instruments ---
 
@@ -612,7 +649,7 @@ NAVCOM2         NAV/COM 2 radio fails. Same effect as NAVCOM1.
 ADF1            ADF receiver fails. Needle spins or parks.
 DME             DME unit fails. Distance readout lost.
 XPNDR           Transponder fails. No ATC replies.
-Note:      No effect on the C172 — transponder remains active.
+                Note:      No effect on the C172 — transponder remains active.
 MARKER          Marker beacon receiver fails.
 STALL_WARN      Stall warning system (horn or stick shaker) fails silently.
 GEAR_WARN       Gear warning horn muted.
@@ -662,13 +699,13 @@ Effect:    GPS position receiver fails. Position freezes while GPS device is
 COM1 / COM2
 -----------
 Effect:    COM radio antenna or RF path fails. COM1 or COM2 communication lost.
-           Each fails independently.
+           Each Antenna fails independently.
 
 NAV1 / NAV2
 -----------
-Effect:    NAV radio receiver fails.
+Effect:    NAV antenna fails.
 Chaining:  NAV1 failure automatically triggers NAV2, verce visa. 
-           If NAV Antenna fail both all NAV-Instruments affectes
+           If NAV Antenna fails, both all NAV-Instruments are affected
           (shared vulnerability in the nav antenna system).
 
 ==============================================================================

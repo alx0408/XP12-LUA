@@ -35,31 +35,27 @@ FUEL_WATER        = DEFAULT
 FUEL_TYPE         = DEFAULT
 
 # ---- ENGINES -----------------------------------------------
-ENG_FAIL_1        = DEFAULT
-ENG_FAIL_2        = DEFAULT
-ENG_FIRE_1        = DEFAULT
-ENG_FIRE_2        = DEFAULT
+ENG_FAIL_1        = 9000
+ENG_FAIL_2        = 9000
+ENG_FIRE_1        = 180000
+ENG_FIRE_2        = 180000
 STARTER_1         = DEFAULT
 STARTER_2         = DEFAULT
-MAG_L1            = DEFAULT
-MAG_L2            = DEFAULT
-MAG_R1            = DEFAULT
-MAG_R2            = DEFAULT
+MAG_L1            = 54000
+MAG_L2            = 54000
+MAG_R1            = 54000
+MAG_R2            = 54000
 FUEL_PUMP_LO_1    = DEFAULT
 FUEL_PUMP_LO_2    = DEFAULT
-FUEL_PUMP_1       = DEFAULT
-FUEL_PUMP_2       = DEFAULT
+FUEL_PUMP_1       = 25600
+FUEL_PUMP_2       = 25600
 ELE_FUEL_PMP_1    = DEFAULT
 ELE_FUEL_PMP_2    = DEFAULT
 FUEL_FLOW_1       = DEFAULT
 FUEL_FLOW_2       = DEFAULT
-FUEL_BLOCK_1      = DEFAULT
-FUEL_BLOCK_2      = DEFAULT
 FUEL_LEAK         = DEFAULT
-OIL_PUMP_1        = DEFAULT
-OIL_PUMP_2        = DEFAULT
-OIL_PRESS_LO_1    = DEFAULT
-OIL_PRESS_LO_2    = DEFAULT
+OIL_PUMP_1        = 80000
+OIL_PUMP_2        = 80000
 AIRFLOW_ENG1      = DEFAULT
 AIRFLOW_ENG2      = DEFAULT
 
@@ -72,8 +68,8 @@ PROP_COARSE_2     = DEFAULT
 # ---- ELECTRICAL --------------------------------------------
 BATTERY_1         = DEFAULT
 BATTERY_2         = DEFAULT
-GENERATOR_1       = DEFAULT
-GENERATOR_2       = DEFAULT
+GENERATOR_1       = 2000
+GENERATOR_2       = 2000
 GEN0_LO           = DEFAULT
 GEN0_HI           = DEFAULT
 GEN1_LO           = DEFAULT
@@ -107,8 +103,8 @@ PROP_HEAT_1       = DEFAULT
 PROP_HEAT_2       = DEFAULT
 TKS_PUMP          = DEFAULT
 HVAC              = DEFAULT
-VACUUM_1          = DEFAULT
-VACUUM_2          = DEFAULT
+VACUUM_1          = 500
+VACUUM_2          = 500
 
 # ---- INSTRUMENTS -------------------------------------------
 ASI_PILOT         = DEFAULT
@@ -219,19 +215,23 @@ ICAO = C172
 # ---- ENVIRONMENT -------------------------------------------
 
 # ---- ENGINES -----------------------------------------------
+ENG_FAIL_1        = 9000
+ENG_FIRE_1        = 180000
 ENG_FAIL_2        = OFF
 ENG_FIRE_2        = OFF
 STARTER_2         = OFF
+MAG_L1            = 54000
+MAG_R1            = 54000
 MAG_L2            = OFF
 MAG_R2            = OFF
 FUEL_PUMP_LO_2    = OFF
+FUEL_PUMP_1       = 25600
 FUEL_PUMP_2       = OFF
 ELE_FUEL_PMP_2    = OFF
 FUEL_FLOW_2       = OFF
+OIL_PUMP_1        = 80000
 OIL_PUMP_2        = OFF
-OIL_PRESS_LO_2    = OFF
 AIRFLOW_ENG2      = OFF
-FUEL_BLOCK_2      = OFF
 
 # ---- PROPELLERS --------------------------------------------
 PROP_FINE_1       = OFF
@@ -240,6 +240,7 @@ PROP_COARSE_1     = OFF
 PROP_COARSE_2     = OFF
 
 # ---- ELECTRICAL --------------------------------------------
+GENERATOR_1       = 2000
 GENERATOR_2       = OFF
 BATTERY_2         = OFF
 GEN1_LO           = OFF
@@ -256,6 +257,7 @@ PROP_HEAT_1       = OFF
 PROP_HEAT_2       = OFF
 TKS_PUMP          = OFF
 HVAC              = OFF
+VACUUM_1          = 500
 VACUUM_2          = OFF
 
 # ---- INSTRUMENTS -------------------------------------------
@@ -322,21 +324,27 @@ ICAO = SR22
 # ---- ENVIRONMENT -------------------------------------------
 
 # ---- ENGINES -----------------------------------------------
+ENG_FAIL_1        = 9000
+ENG_FIRE_1        = 180000
 ENG_FAIL_2        = OFF
 ENG_FIRE_2        = OFF
 STARTER_2         = OFF
+MAG_L1            = 54000
+MAG_R1            = 54000
 MAG_L2            = OFF
 MAG_R2            = OFF
 FUEL_PUMP_LO_2    = OFF
+FUEL_PUMP_1       = 25600
 FUEL_PUMP_2       = OFF
 ELE_FUEL_PMP_2    = OFF
 FUEL_FLOW_2       = OFF
+OIL_PUMP_1        = 80000
 OIL_PUMP_2        = OFF
-OIL_PRESS_LO_2    = OFF
 AIRFLOW_ENG2      = OFF
 
 # ---- ELECTRICAL --------------------------------------------
 ELEC_BUS2         = OFF
+GENERATOR_1       = 2000
 GENERATOR_2       = OFF
 
 # ---- LIGHTS ------------------------------------------------
@@ -347,6 +355,7 @@ PITOT_HEAT_2      = OFF
 AOA_HEAT          = OFF
 PROP_HEAT_1       = OFF
 PROP_HEAT_2       = OFF
+VACUUM_1          = 500
 VACUUM_2          = OFF
 
 # ---- INSTRUMENTS -------------------------------------------
@@ -418,8 +427,6 @@ ELE_FUEL_PMP_1    = OFF
 ELE_FUEL_PMP_2    = OFF
 FUEL_FLOW_1       = OFF
 FUEL_FLOW_2       = OFF
-OIL_PRESS_LO_1    = OFF
-OIL_PRESS_LO_2    = OFF
 OIL_PUMP_1        = OFF
 OIL_PUMP_2        = OFF
 AIRFLOW_ENG1      = OFF
@@ -450,6 +457,8 @@ GEN1_HI           = OFF
 # ---- SYSTEMS -----------------------------------------------
 TKS_PUMP          = OFF
 HVAC              = OFF
+VACUUM_1          = 500
+VACUUM_2          = 500
 
 # ---- INSTRUMENTS ------------------------------------------
 AHZ_COPILOT       = OFF
