@@ -101,7 +101,8 @@ Global commands:
   FlyWithLua/Incidents/drain_fuel_tanks    Fuel drain preflight check. Only works
                                            in external view with engine off.
                                            Blocks FUEL_WATER for that flight.
-                                           Invalidated when refueling is detected.
+                                           Records the sim date (local_date_days).
+                                           Expires the next sim day.
   FlyWithLua/Incidents/recharge_bat        Recharge battery to 80 % of maximum
                                            capacity. Alternative to native ground
                                            power. Popup "Recharged" confirms.
@@ -243,7 +244,8 @@ Prevention:
            Fuel drain check: switch to any external view with engine off, then
            use the command FlyWithLua/Incidents/drain_fuel_tanks. The script
            confirms with a popup "FUEL TANKS DRAINED" and shows "FUEL TANKS: DRAINED"
-           in the status display. The check is invalidated if refueling is detected.
+           in the status display. The check records the sim date (local_date_days)
+           and expires the next sim day — independent of refueling.
 Note:      Does not work on the B58 (SimCoders REP).
 
 FUEL_TYPE

@@ -75,6 +75,7 @@ local _ref_gen_on    = XPLMFindDataRef("sim/cockpit/electrical/generator_on")
 local _ref_volts     = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed    = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_view_ext  = XPLMFindDataRef("sim/graphics/view/view_is_external")
+local _ref_sim_day   = XPLMFindDataRef("sim/time/local_date_days")  -- day of year, 0=Jan 1
 
 -- ---- Fuel DataRefs (scalar, confirmed working per fuel_leak_test) ----
 local _ref_fuel = {
@@ -187,6 +188,7 @@ local overvolt_last = 0
 -- Fuel cap preflight check state
 local fuel_cap_check_done   = false  -- true: external-view check done, FUEL_CAP blocked
 local fuel_drain_check_done = false  -- true: drain command done in ext view, FUEL_WATER blocked
+local fuel_drain_check_day = nil   -- sim day (local_date_days) when drain check was performed; nil = not done
 local fuel_type_pending     = false  -- true: refueling detected, FUEL_TYPE can trigger while on ground
 -- Battery charge persistence
 local BAT_LOW_PCT      = 0.25   -- below this fraction of max → "BAT: LOW" warning
@@ -400,7 +402,7 @@ save_memory = function()
         file:write(string.format("BAT_WH = %.2f\n", bat_snap))
         bat_saved = bat_snap
     end
-    if fuel_drain_check_done then file:write("FUEL_DRAIN_CHECK = done\n") end
+    if fuel_drain_check_day then file:write(string.format("FUEL_DRAIN_SIM_DAY = %d\n", fuel_drain_check_day)) end
     if fuel_type_pending     then file:write("FUEL_TYPE_PENDING = pending\n") end
 
     -- fuel leak routine state: 1=T1, 2=T2, 3=both
@@ -460,8 +462,13 @@ local function load_memory()
                         fuel_snap_1 = tonumber(val)
                     elseif key == "TANK2_KG" then
                         fuel_snap_2 = tonumber(val)
-                    elseif key == "FUEL_DRAIN_CHECK" and val == "done" then
-                        fuel_drain_check_done = true
+                    elseif key == "FUEL_DRAIN_SIM_DAY" then
+                        local t = tonumber(val)
+                        if t then
+                            fuel_drain_check_day  = t
+                            fuel_drain_check_done = true
+                            -- expiry evaluated in the on-ground loop after load
+                        end
                     elseif key == "FUEL_TYPE_PENDING" and val == "pending" then
                         fuel_type_pending = true
                     elseif key == "FUEL_LEAK" and fuelleak_routine then
@@ -514,9 +521,8 @@ local function fuel_cap_evaluate_check()
         save_memory()
     elseif (live_1 and live_1 > fuel_snap_1 + 1.0)
         or (live_2 and live_2 > fuel_snap_2 + 1.0) then
-        -- refueling detected: invalidate checks, set fuel type pending
+        -- refueling detected: invalidate cap check, set fuel type pending
         fuel_cap_check_done   = false
-        fuel_drain_check_done = false
         fuel_type_pending     = true
         fuel_snap_1 = live_1
         fuel_snap_2 = live_2
@@ -1431,6 +1437,11 @@ function incidents_fuelcap_check()
     local new_state = not fuel_cap_check_done
     fuel_cap_check_done   = new_state
     fuel_drain_check_done = new_state
+    if new_state then
+        fuel_drain_check_day = _ref_sim_day and XPLMGetDatai(_ref_sim_day) or nil
+    else
+        fuel_drain_check_day = nil
+    end
     save_memory()
 end
 
@@ -1498,6 +1509,7 @@ create_command(
 function incidents_drain_fuel_tanks()
     if airborne() or engine_on() then return end
     if not (_ref_view_ext and XPLMGetDatai(_ref_view_ext) == 1) then return end
+    fuel_drain_check_day  = _ref_sim_day and XPLMGetDatai(_ref_sim_day) or nil
     fuel_drain_check_done = true
     local fw = find_failure("FUEL_WATER")
     if fw and failure_is_active(fw) then reset_failure(fw) end
@@ -1912,12 +1924,22 @@ function incidents_state_tick()
         local live_2 = read_tank(2)
         if (live_1 and live_1 > fuel_snap_1 + 1.0)
         or (live_2 and live_2 > fuel_snap_2 + 1.0) then
-            fuel_cap_check_done   = false
-            fuel_drain_check_done = false
-            fuel_type_pending     = true
+            fuel_cap_check_done = false
+            fuel_type_pending   = true
             fuel_snap_1 = live_1
             fuel_snap_2 = live_2
             save_memory()
+        end
+        -- drain check expiry: invalidate if sim date has advanced by more than 1 day
+        if fuel_drain_check_done and fuel_drain_check_day and _ref_sim_day then
+            local cur_day = XPLMGetDatai(_ref_sim_day)
+            local diff    = cur_day - fuel_drain_check_day
+            if diff < 0 then diff = diff + 365 end  -- year wrap
+            if diff >= 1 then
+                fuel_drain_check_done = false
+                fuel_drain_check_day  = nil
+                save_memory()
+            end
         end
     end
 
@@ -2032,6 +2054,7 @@ function incidents_aircraft_check()
         bat_saved             = nil
         bat_low               = false
         fuel_drain_check_done = false
+        fuel_drain_check_day = nil
         fuel_type_pending     = false
         stop_overvolt()
         -- reset door routine for new aircraft; do_often tick reads actual sim state within ~100ms
