@@ -399,15 +399,14 @@ Effect:    Generator voltage high. Bus rises to ≈31 V. AMP increases,
            Only devices that are currently powered and not already failed
            can be damaged. Devices are grouped into three tiers:
 
-             Tier 1 (most vulnerable — glass cockpit / navigation):
+             Tier 1 (most vulnerable — glass cockpit / navigation / radios):
                G1000 PFD, MFD, GIA1, GIA2, GEA, Magnetometer,
                G1000 ASI / ALT / VVI, G430 GPS1 / GPS2,
-               G430 NAV1 / NAV2, Autopilot computer.
+               Autopilot computer, NAVCOM1 / NAVCOM2.
 
-             Tier 2 (moderately vulnerable — radios / engine instruments /
-               battery):
-               NAVCOM1 / NAVCOM2, Transponder, DME, ADF1, Marker beacon,
-               Weather radar, RPM / MP / CHT / EGT / FF / Fuel-P /
+             Tier 2 (moderately vulnerable — engine instruments / battery):
+               Transponder, DME, ADF1, Marker beacon, Weather radar,
+               RPM / MP / CHT / EGT / FF / Fuel-P /
                Oil-P / Oil-T indicators (engines 1 and 2), Battery 1.
 
              Tier 3 (least vulnerable — lights):
@@ -423,6 +422,25 @@ Note:      DO-160 tolerance for 28 V avionics is approximately 32 V for a
            from the bus. With the generator still running, devices continue
            to operate; loss of power only occurs if the generator also fails
            or is switched off.
+
+AVIONICS-ON GENERATOR TRANSITION — BUS SPIKE DAMAGE
+----------------------------------------------------
+Effect:    Switching the avionics master ON before the generator is stable
+           (startup), or leaving it ON while switching the generator OFF
+           (shutdown), can produce a voltage spike on the avionics bus.
+           Each generator transition (on→off or off→on) with the avionics
+           master powered is evaluated independently:
+
+             25% chance: one random Tier-1 device is immediately damaged.
+             Selection is uniform among all Tier-1 devices that are
+             currently not failed and not profile-disabled.
+
+           Standard procedure to avoid this:
+             Startup:  avionics OFF → start engine → generator stable → avionics ON.
+             Shutdown: avionics OFF → generator OFF → battery OFF.
+
+Note:      Only active for generators whose GEN_HI failure is not profile-OFF.
+           The B58 (all electrical OFF) is therefore excluded entirely.
 
 ELEC_BUS1 / ELEC_BUS2 ##checked
 ----------------------
@@ -553,11 +571,6 @@ AHZ_COPILOT     Copilot artificial horizon fails.
 
 G430_GPS1       GPS unit 1 fails completely — no moving map, no navigation.
 G430_GPS2       GPS unit 2 fails completely.
-G430_NAV1       NAV1 radio tuning fails — COM and NAV frequencies cannot be
-                changed. GPS navigation continues to function normally; only
-                manual frequency tuning is locked. The failure may go unnoticed
-                until the pilot needs to change a COM or NAV frequency.
-G430_NAV2       NAV2 radio tuning fails. Same effect as G430_NAV1.
 
 --- G1000 (Garmin integrated glass cockpit) ---
 
@@ -584,8 +597,10 @@ OIL_T_IND_1 / OIL_T_IND_2    Oil temperature indicator fails.
 --- Other instruments ---
 
 WXR_RADAR       Weather radar fails.
-NAVCOM1         NAV/COM 1 radio (antenna/receiver) fails.
-NAVCOM2         NAV/COM 2 radio fails.
+NAVCOM1         NAV/COM 1 radio fails — simulates receiver/antenna failure while
+                the G530 device itself remains powered. COM and NAV are lost;
+                GPS navigation continues. Tier 1 in the overvoltage cascade.
+NAVCOM2         NAV/COM 2 radio fails. Same effect as NAVCOM1.
 ADF1            ADF receiver fails. Needle spins or parks.
 DME             DME unit fails. Distance readout lost.
 XPNDR           Transponder fails. No ATC replies.

@@ -804,6 +804,9 @@ local OV_C1        = 2.5e-7
 local OV_C2        = 1.0e-7
 local OV_C3        = 2.0e-7
 local OV_TEST_RATE = 0.0265   -- flat p/s → ~80% dead per 60 s
+local GEN_AVION_P  = 0.25     -- prob of one Tier-1 failure per gen transition with avionics on
+
+local gen_prev = {}           -- [0]/[1] = last known generator state per side
 
 overvolt_routine = {
     active  = false,
@@ -826,12 +829,10 @@ local overvolt_devices = {
     { key="G_VVI",        tier=1 },
     { key="G430_GPS1",    tier=1 },
     { key="G430_GPS2",    tier=1 },
-    { key="G430_NAV1",    tier=1 },
-    { key="G430_NAV2",    tier=1 },
     { key="AP_COMPUTER",  tier=1 },
+    { key="NAVCOM1",      tier=1 },
+    { key="NAVCOM2",      tier=1 },
     -- Tier 2: com/nav and EIS (more robust PSU, lower C)
-    { key="NAVCOM1",      tier=2 },
-    { key="NAVCOM2",      tier=2 },
     { key="XPNDR",        tier=2 },
     { key="DME",          tier=2 },
     { key="ADF1",         tier=2 },
@@ -1052,8 +1053,6 @@ def("ALT_COPILOT",    "sim/operation/failures/rel_cop_alt",          "ALT Copilo
 def("AHZ_COPILOT",    "sim/operation/failures/rel_cop_ahz",          "AHZ Copilot",  nil)
 def("G430_GPS1",      "sim/operation/failures/rel_g430_gps1",        "G430 GPS 1",   nil)
 def("G430_GPS2",      "sim/operation/failures/rel_g430_gps2",        "G430 GPS 2",   nil)
-def("G430_NAV1",      "sim/operation/failures/rel_g430_rad1_tune",   "G430 Nav 1",   nil)
-def("G430_NAV2",      "sim/operation/failures/rel_g430_rad2_tune",   "G430 Nav 2",   nil)
 def("G_ASI",          "sim/operation/failures/rel_g_asi",            "G-ASI",        nil)
 def("G_ALT",          "sim/operation/failures/rel_g_alt",            "G-ALT",        nil)
 def("G_VVI",          "sim/operation/failures/rel_g_vvi",            "G-VVI",        nil)
@@ -1878,8 +1877,44 @@ end
 
 do_sometimes("incidents_fix_tick()")
 
+-- ---- Avionics-on generator transition damage ----------------
+-- Startup or shutdown with avionics master ON can spike the bus.
+-- 25% chance of one random Tier-1 failure per generator transition.
+-- Skipped if GEN_HI for that side is profile-OFF (e.g. B58).
+local function check_avion_gen_damage(side)
+    local hi_key = side == 0 and "GEN0_HI" or "GEN1_HI"
+    if cfg.overvolt_blocked[hi_key] then return end
+    if not dr_avion or dr_avion == 0 then return end
+    if math.random() > GEN_AVION_P then return end
+    local eligible = {}
+    for _, dev in ipairs(overvolt_devices) do
+        if dev.tier == 1 then
+            local f = find_failure(dev.key)
+            if f and not cfg.overvolt_blocked[dev.key] and get_dr(f) ~= 6 then
+                table.insert(eligible, f)
+            end
+        end
+    end
+    if #eligible == 0 then return end
+    local victim = eligible[math.random(#eligible)]
+    set_dr(victim, 6)
+    save_memory()
+end
+
 -- ---- State monitor (engine/fuel/preflight checks) ----------
 function incidents_state_tick()
+    -- ---- Generator transition: avionics-on damage check ----------------
+    if _ref_gen_on then
+        for _, side in ipairs({0, 1}) do
+            local v       = XPLMGetDatavi(_ref_gen_on, side, 1)
+            local gen_now = (v and v[0]) or 0
+            if gen_prev[side] ~= nil and gen_prev[side] ~= gen_now then
+                check_avion_gen_damage(side)
+            end
+            gen_prev[side] = gen_now
+        end
+    end
+
     -- ---- Engine-off detection: save fuel snapshot for refuel detection ----
     local eng_now = engine_on()
     if engine_prev_on and not eng_now then
