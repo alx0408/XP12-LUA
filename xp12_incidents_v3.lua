@@ -1885,7 +1885,8 @@ local function check_avion_gen_damage(side)
     local hi_key = side == 0 and "GEN0_HI" or "GEN1_HI"
     if cfg.overvolt_blocked[hi_key] then return end
     if not dr_avion or dr_avion == 0 then return end
-    if math.random() > GEN_AVION_P then return end
+    local p = overvolt_routine.test and 1.0 or GEN_AVION_P
+    if math.random() > p then return end
     local eligible = {}
     for _, dev in ipairs(overvolt_devices) do
         if dev.tier == 1 then
@@ -1904,10 +1905,15 @@ end
 -- ---- State monitor (engine/fuel/preflight checks) ----------
 function incidents_state_tick()
     -- ---- Generator transition: avionics-on damage check ----------------
-    if _ref_gen_on then
+    -- "generator producing" = switch ON AND engine running (per side).
+    -- Switch-only changes (e.g. flipping the switch with engine off) also count.
+    if _ref_gen_on and _ref_engn then
         for _, side in ipairs({0, 1}) do
-            local v       = XPLMGetDatavi(_ref_gen_on, side, 1)
-            local gen_now = (v and v[0]) or 0
+            local vs        = XPLMGetDatavi(_ref_gen_on, side, 1)
+            local ve        = XPLMGetDatavi(_ref_engn,   side, 1)
+            local switch_on = (vs and vs[0]) or 0
+            local eng_run   = (ve and ve[0]) or 0
+            local gen_now   = (switch_on == 1 and eng_run == 1) and 1 or 0
             if gen_prev[side] ~= nil and gen_prev[side] ~= gen_now then
                 check_avion_gen_damage(side)
             end
