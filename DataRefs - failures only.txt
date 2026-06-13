@@ -51,20 +51,18 @@ sim/operation/failures/rel_prpcrs1	int	y	failure_enum	Prop governor fail to coar
 
 
 ELECTRICAL
-sim/operation/failures/rel_esys		int	y	failure_enum	Electrical System (Bus 1)	
-sim/operation/failures/rel_esys2	int	y	failure_enum	Electrical System (Bus 2)
-sim/operation/failures/rel_genera0	int	y	failure_enum	Generator - engine 1	
-sim/operation/failures/rel_genera1	int	y	failure_enum	Generator - engine 2	
 sim/operation/failures/rel_batter0	int	y	failure_enum	Battery 1	
 sim/operation/failures/rel_batter1	int	y	failure_enum	Battery 2
+
+sim/operation/failures/rel_genera0	int	y	failure_enum	Generator - engine 1	
+sim/operation/failures/rel_genera1	int	y	failure_enum	Generator - engine 2	
 sim/operation/failures/rel_gen0_lo	int	y	failure_enum	Generator 0 voltage low	
 sim/operation/failures/rel_gen0_hi	int	y	failure_enum	Generator 0 voltage hi	
 sim/operation/failures/rel_gen1_lo	int	y	failure_enum	Generator 1 voltage low	
 sim/operation/failures/rel_gen1_hi	int	y	failure_enum	Generator 1 voltage hi	
-sim/operation/failures/rel_bat0_lo	int	y	failure_enum	Battery 0 voltage low	
-sim/operation/failures/rel_bat0_hi	int	y	failure_enum	Battery 0 voltage hi	
-sim/operation/failures/rel_bat1_lo	int	y	failure_enum	Battery 1 voltage low	
-sim/operation/failures/rel_bat1_hi	int	y	failure_enum	Battery 1 voltage hi
+
+sim/operation/failures/rel_esys		int	y	failure_enum	Electrical System (Bus 1)	
+sim/operation/failures/rel_esys2	int	y	failure_enum	Electrical System (Bus 2)
 
 
 LIGHTS
@@ -111,32 +109,27 @@ sim/operation/failures/rel_cop_alt	int	y	failure_enum	Altimeter (Copilot)
 
 sim/operation/failures/rel_g430_gps1	int	y	failure_enum	G430 GPS 1 Inop	
 sim/operation/failures/rel_g430_gps2	int	y	failure_enum	G430 GPS 2 Inop	
-sim/operation/failures/rel_g430_rad1_tune	int	y	failure_enum	G430 Nav/Com Tuner 1 Inop	
-sim/operation/failures/rel_g430_rad2_tune	int	y	failure_enum	G430 Nav/Com Tuner 2 Inop
 
 sim/operation/failures/rel_g_asi	int	y	failure_enum	airspeed - glass cockpit
 sim/operation/failures/rel_g_alt	int	y	failure_enum	altimeter - glass cockpit
 sim/operation/failures/rel_g_vvi	int	y	failure_enum	vvi - glass cockpit
 sim/operation/failures/rel_g_pfd	int	y	failure_enum	PFD screen failure
 sim/operation/failures/rel_g_mfd	int	y	failure_enum	MFD screen failure
-sim/operation/failures/rel_wxr_radar	int	y	failure_enum	onboard weather radar
+
 sim/operation/failures/rel_g_gia1	int	y	failure_enum	GIA 1
 sim/operation/failures/rel_g_gia2	int	y	failure_enum	GIA 2
 sim/operation/failures/rel_g_gea	int	y	failure_enum	gea
+sim/operation/failures/rel_adc_comp	int	y	failure_enum	air data computer	
+sim/operation/failures/rel_adc_comp_2	int	y	failure_enum	air data computer 2	
+sim/operation/failures/rel_g_arthorz	int	y	failure_enum	AHRS	
+sim/operation/failures/rel_g_arthorz_2	int	y	failure_enum	AHRS 2
 sim/operation/failures/rel_g_magmtr	int	y	failure_enum	magnetometer
+sim/operation/failures/rel_wxr_radar	int	y	failure_enum	onboard weather radar
 
 sim/operation/failures/rel_navcom1	int	y	failure_enum	Nav and com 1 radio	
 sim/operation/failures/rel_navcom2	int	y	failure_enum	Nav and com 2 radio	
-sim/operation/failures/rel_nav1		int	y	failure_enum	Nav-1 radio	
-sim/operation/failures/rel_nav2		int	y	failure_enum	Nav-2 radio	
-sim/operation/failures/rel_com1		int	y	failure_enum	Com-1 radio	
-sim/operation/failures/rel_com2		int	y	failure_enum	Com-2 radio	
-
 sim/operation/failures/rel_adf1		int	y	failure_enum	ADF 1 (only one ADF failure in 830!)	
-sim/operation/failures/rel_gps		int	y	failure_enum	GPS	
 sim/operation/failures/rel_dme		int	y	failure_enum	DME	
-sim/operation/failures/rel_loc		int	y	failure_enum	Localizer	
-sim/operation/failures/rel_gls		int	y	failure_enum	Glide Slope		
 sim/operation/failures/rel_xpndr	int	y	failure_enum	Transponder failure	
 sim/operation/failures/rel_marker	int	y	failure_enum	Marker Beacons
 
@@ -152,6 +145,7 @@ sim/operation/failures/rel_FF_ind0	int	y	failure_enum	Panel Indicator Inop - ff 
 sim/operation/failures/rel_FF_ind1	int	y	failure_enum	Panel Indicator Inop - ff engine 2	
 sim/operation/failures/rel_fp_ind_0	int	y	failure_enum	Panel Indicator Inop - Fuel Pressure 1	
 sim/operation/failures/rel_fp_ind_1	int	y	failure_enum	Panel Indicator Inop - Fuel Pressure 2	
+sim/operation/failures/rel_g_fuel	int	y	failure_enum	fuel quantity sensor
 sim/operation/failures/rel_oilp_ind_0	int	y	failure_enum	Panel Indicator Inop - Oil Pressure 1	
 sim/operation/failures/rel_oilp_ind_1	int	y	failure_enum	Panel Indicator Inop - Oil Pressure 2	
 sim/operation/failures/rel_oilt_ind_0	int	y	failure_enum	Panel Indicator Inop - Oil Temperature 1	
@@ -161,7 +155,7 @@ sim/operation/failures/rel_stall_warn	int	y	failure_enum	Stall warning has faile
 sim/operation/failures/rel_gear_warning	int	y	failure_enum	gear warning audio is broken	
 sim/operation/failures/rel_prop_sync	int	y	failure_enum	Prop sync - INSTRUMENT!
 
-SENSORS
+SENSORS / ANTENNAS
 sim/operation/failures/rel_pitot	int	y	failure_enum	Pitot 1 - Blockage	
 sim/operation/failures/rel_pitot2	int	y	failure_enum	Pitot 2 - Blockage	
 sim/operation/failures/rel_pitot_stby	int	y	failure_enum	Pitot stby - Blockage	
@@ -172,7 +166,15 @@ sim/operation/failures/rel_static2_err	int	y	failure_enum	Static system 2 - Erro
 sim/operation/failures/rel_static_stby	int	y	failure_enum	Static stby - Blockage
 sim/operation/failures/rel_g_oat	int	y	failure_enum	OAT, doubles for TAT sensor, pilot
 sim/operation/failures/rel_ice_detect	int	y	failure_enum	Ice detector	
-sim/operation/failures/rel_g_fuel	int	y	failure_enum	fuel quantity sensor
+
+
+sim/operation/failures/rel_loc		int	y	failure_enum	Localizer	
+sim/operation/failures/rel_gls		int	y	failure_enum	Glide Slope	
+sim/operation/failures/rel_gps		int	y	failure_enum	GPS
+sim/operation/failures/rel_com1		int	y	failure_enum	Com-1 radio	
+sim/operation/failures/rel_com2		int	y	failure_enum	Com-2 radio	
+sim/operation/failures/rel_nav1		int	y	failure_enum	Nav-1 radio	
+sim/operation/failures/rel_nav2		int	y	failure_enum	Nav-2 radio	
 
 GEAR
 sim/operation/failures/rel_gear_ind	int	y	failure_enum	Landing Gear indicator		
@@ -200,8 +202,7 @@ sim/operation/failures/rel_ail_trim_run	int	y	failure_enum	Pitch Trim Runaway
 sim/operation/failures/rel_elv_trim_run	int	y	failure_enum	Elevator Trim Runaway
 
 
-2. NOPE, erstmal nicht
-
+2. NOPE, erstmal nicht bzw. nicht mehr
 
 ENGINE
 sim/operation/failures/rel_chipde0	int	y	failure_enum	Chip Detected - engine 1 - Metallspäne 
@@ -211,17 +212,23 @@ sim/operation/failures/rel_seize_1	int	y	failure_enum	Engine Seize - engine 2
 sim/operation/failures/rel_govnr_0	int	y	failure_enum	Governor throttle fail - engine 1 - Propdrehzahl defekt?
 sim/operation/failures/rel_govnr_1	int	y	failure_enum	Governor throttle fail - engine 2
 
-sim/operation/failures/rel_adc_comp	int	y	failure_enum	air data computer	
-sim/operation/failures/rel_adc_comp_2	int	y	failure_enum	air data computer 2	
-sim/operation/failures/rel_g_arthorz	int	y	failure_enum	AHRS	
-sim/operation/failures/rel_g_arthorz_2	int	y	failure_enum	AHRS 2
+sim/operation/failures/rel_g430_rad1_tune	int	y	failure_enum	G430 Nav/Com Tuner 1 Inop	- kein effect erkennbar
+sim/operation/failures/rel_g430_rad2_tune	int	y	failure_enum	G430 Nav/Com Tuner 2 Inop	- kein effect erkennbar
 
+ELECTRICAL
+sim/operation/failures/rel_bat0_lo	int	y	failure_enum	Battery 0 voltage low	
+sim/operation/failures/rel_bat0_hi	int	y	failure_enum	Battery 0 voltage hi	
+sim/operation/failures/rel_bat1_lo	int	y	failure_enum	Battery 1 voltage low	
+sim/operation/failures/rel_bat1_hi	int	y	failure_enum	Battery 1 voltage hi
+
+SYSTEMS
+sim/operation/failures/rel_depres_slow		int	y	failure_enum	Slow cabin leak - descend or black out	
+sim/operation/failures/rel_depres_fast		int	y	failure_enum	catastrophic decompression - yer dead	
+
+CONTROLS
 sim/operation/failures/rel_trim_rud	int	y	failure_enum	Yaw Trim
 sim/operation/failures/rel_trim_ail	int	y	failure_enum	Roll trim
 sim/operation/failures/rel_trim_elv	int	y	failure_enum	Pitch Trim
-
-sim/operation/failures/rel_depres_slow		int	y	failure_enum	Slow cabin leak - descend or black out	
-sim/operation/failures/rel_depres_fast		int	y	failure_enum	catastrophic decompression - yer dead	
 
 NOT IN XP-FAILURE SYSTEM (?)
 sim/operation/failures/rel_avionics_fan	int	y	failure_enum	Avionics fan (equipment cooling) failure

@@ -400,8 +400,8 @@ Effect:    Generator voltage high. Bus rises to ≈31 V. AMP increases,
            can be damaged. Devices are grouped into three tiers:
 
              Tier 1 (most vulnerable — glass cockpit / navigation / radios):
-               G1000 PFD, MFD, GIA1, GIA2, GEA, Magnetometer,
-               G1000 ASI / ALT / VVI, G430 GPS1 / GPS2,
+               G1000 PFD, MFD, GIA1, GIA2, GEA, ADR1, ADR2, AHRS1, AHRS2,
+               Magnetometer, G1000 ASI / ALT / VVI, G430 GPS1 / GPS2,
                Autopilot computer, NAVCOM1 / NAVCOM2.
 
              Tier 2 (moderately vulnerable — engine instruments / battery):
@@ -580,8 +580,16 @@ G_MFD                     Multi-function display fails completely.
 G_GIA1 / G_GIA2           GIA integrated avionics units fail.
 G_GEA                     GEA engine and airframe unit fails.
 MAGNETOMETER              G1000 magnetometer fails; heading reference lost.
+ADR1 / ADR2               Air data reference computer fails. Airspeed, altitude, and
+                          vertical speed data to the G1000 are lost. ADR2 is the
+                          redundant second unit (not fitted on single-engine G1000 aircraft).
+AHRS1 / AHRS2             Attitude and heading reference system fails. Attitude,
+                          heading, and turn rate are lost. AHRS2 is the second unit
+                          (not fitted on single-engine G1000 aircraft).
 
-Note: G1000 failures are only active on aircraft equipped with G1000.
+Note: G1000 failures (including ADR and AHRS) are only active on aircraft
+      equipped with G1000. ADR2 and AHRS2 are disabled for single-engine
+      G1000 aircraft (C172, SR22). All G1000 failures are disabled for the B58.
 
 --- Engine instruments ---
 
@@ -650,6 +658,18 @@ GPS
 ---
 Effect:    GPS position receiver fails. Position freezes while GPS device is
            powered on.
+
+COM1 / COM2
+-----------
+Effect:    COM radio antenna or RF path fails. COM1 or COM2 communication lost.
+           Each fails independently.
+
+NAV1 / NAV2
+-----------
+Effect:    NAV radio receiver fails.
+Chaining:  NAV1 failure automatically triggers NAV2, verce visa. 
+           If NAV Antenna fail both all NAV-Instruments affectes
+          (shared vulnerability in the nav antenna system).
 
 ==============================================================================
  GEAR FAILURES
@@ -762,7 +782,10 @@ No TKS, no HVAC, no window heat, no prop heat, no AOA heat: disabled.
 
 No weather radar: WXR_RADAR disabled.
 
-Either G530/G430 or G1000: NAVCOM1, NAVCOM2 disabled (irrelevant).
+Either G530/G430 or G1000: NAVCOM1, NAVCOM2 disabled (integrated in avionics suite).
+
+G1000 version: ADR1 and AHRS1 are active. ADR2 and AHRS2 are disabled.
+The G1000 has a single ADC and a single AHRS unit.
 
 PITOT_2, PITOT_STBY, STATIC_2, STATIC_ERR_2, ICE_DETECT disabled.
 
@@ -782,7 +805,9 @@ only the G1000 suite. G1000-specific failures (G_PFD, G_MFD, etc.) are active.
 No retractable gear: GEAR_IND, GEAR_ACT, and all GEAR_RET failures disabled.
 
 No NAVCOM radios as standalone units (integrated in G1000): NAVCOM1, NAVCOM2
-disabled. G430_GPS1, G430_GPS2, G430_NAV1, G430_NAV2 disabled.
+disabled. G430_GPS1, G430_GPS2 disabled (no G430 fitted).
+
+G1000 only: ADR2 and AHRS2 disabled — single ADC/AHRS unit.
 
 No prop heat, no AOA heat: those failures disabled.
 
@@ -832,10 +857,10 @@ OAT — no effect: disabled.
 
 AHZ_COPILOT — no effect: disabled.
 
-G430_NAV1 — no effect (redundant with GPS device): disabled.
-G430_GPS2, G430_NAV2, NAVCOM1, NAVCOM2 — n/a or redundant: disabled.
+G430_GPS2, NAVCOM1, NAVCOM2 — n/a or redundant: disabled.
 
 All G1000 failures — n/a (B58 is not a G1000 aircraft): disabled.
+ADR1, ADR2, AHRS1, AHRS2 — n/a (G1000 components): disabled.
 
 WXR_RADAR — no effect: disabled.
 

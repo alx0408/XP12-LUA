@@ -823,6 +823,10 @@ local overvolt_devices = {
     { key="G_GIA1",       tier=1 },
     { key="G_GIA2",       tier=1 },
     { key="G_GEA",        tier=1 },
+    { key="ADR1",         tier=1 },
+    { key="ADR2",         tier=1 },
+    { key="AHRS1",        tier=1 },
+    { key="AHRS2",        tier=1 },
     { key="MAGNETOMETER", tier=1 },
     { key="G_ASI",        tier=1 },
     { key="G_ALT",        tier=1 },
@@ -988,7 +992,7 @@ def("OIL_PRESS_LO_2", "sim/operation/failures/rel_eng_lo1",          "OilPressLo
 def("AIRFLOW_ENG1",   "sim/operation/failures/rel_airres0",          "Airflow Eng1", nil)
 def("AIRFLOW_ENG2",   "sim/operation/failures/rel_airres1",          "Airflow Eng2", nil)
 
--- ---- PROPELLERS --------------------------------------------
+-- ---- PROPELLERS (constant speed prop only) -------------------------
 def("PROP_FINE_1",    "sim/operation/failures/rel_prpfin0",          "Prop Fine 1",  nil)
 def("PROP_FINE_2",    "sim/operation/failures/rel_prpfin1",          "Prop Fine 2",  nil)
 def("PROP_COARSE_1",  "sim/operation/failures/rel_prpcrs0",          "PropCoarse 1", nil)
@@ -1061,6 +1065,10 @@ def("G_MFD",          "sim/operation/failures/rel_g_mfd",            "MFD",     
 def("G_GIA1",         "sim/operation/failures/rel_g_gia1",           "GIA 1",        nil)
 def("G_GIA2",         "sim/operation/failures/rel_g_gia2",           "GIA 2",        nil)
 def("G_GEA",          "sim/operation/failures/rel_g_gea",            "GEA",          nil)
+def("ADR1",           "sim/operation/failures/rel_adc_comp",         "ADR 1",        nil)
+def("ADR2",           "sim/operation/failures/rel_adc_comp_2",       "ADR 2",        nil)
+def("AHRS1",          "sim/operation/failures/rel_g_arthorz",        "AHRS 1",       nil)
+def("AHRS2",          "sim/operation/failures/rel_g_arthorz_2",      "AHRS 2",       nil)
 def("MAGNETOMETER",   "sim/operation/failures/rel_g_magmtr",         "Magnetomtr",   nil)
 def("WXR_RADAR",      "sim/operation/failures/rel_wxr_radar",        "WX Radar",     nil)
 def("NAVCOM1",        "sim/operation/failures/rel_navcom1",           "NavCom 1",     nil)
@@ -1087,6 +1095,7 @@ def("OIL_T_IND_1",    "sim/operation/failures/rel_oilt_ind_0",       "OilT Ind 1
 def("OIL_T_IND_2",    "sim/operation/failures/rel_oilt_ind_1",       "OilT Ind 2",   nil)
 def("STALL_WARN",     "sim/operation/failures/rel_stall_warn",       "Stall Warn",   nil)
 def("GEAR_WARN",      "sim/operation/failures/rel_gear_warning",     "Gear Warn",    nil)
+def("PROP_SYNC",      "sim/operation/failures/rel_prop_sync",        "Prop Sync",    nil)
 
 -- ---- SENSORS / ANTENNAS  -----------------------------------------------
 def("PITOT",          "sim/operation/failures/rel_pitot",            "Pitot",        nil)
@@ -1103,6 +1112,12 @@ def("FUEL_QTY",       "sim/operation/failures/rel_g_fuel",           "Fuel Qty",
 def("LOC",            "sim/operation/failures/rel_loc",              "LOC",          nil)
 def("GLS",            "sim/operation/failures/rel_gls",              "Glide Slope",  nil)
 def("GPS",            "sim/operation/failures/rel_gps",              "GPS",          nil)
+def("COM1",           "sim/operation/failures/rel_com1",             "COM 1",        nil)
+def("COM2",           "sim/operation/failures/rel_com2",             "COM 2",        nil)
+def("NAV1",           "sim/operation/failures/rel_nav1",             "NAV 1",        nil, nil, nil,
+    { followup = { { key="NAV2", prob=1.0 } } })
+def("NAV2",           "sim/operation/failures/rel_nav2",             "NAV 2",        nil, nil, nil,
+    { followup = { { key="NAV1", prob=1.0 } } })
 
 -- ---- GEAR --------------------------------------------------
 def("GEAR_IND",       "sim/operation/failures/rel_gear_ind",         "Gear Ind",     nil)

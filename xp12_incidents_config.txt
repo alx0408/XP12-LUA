@@ -34,7 +34,6 @@ FUEL_CAP          = DEFAULT
 FUEL_WATER        = DEFAULT
 FUEL_TYPE         = DEFAULT
 
-
 # ---- ENGINES -----------------------------------------------
 ENG_FAIL_1        = DEFAULT
 ENG_FAIL_2        = DEFAULT
@@ -81,7 +80,6 @@ GEN1_LO           = DEFAULT
 GEN1_HI           = DEFAULT
 ELEC_BUS1         = DEFAULT
 ELEC_BUS2         = DEFAULT
-
 
 # ---- LIGHTS ------------------------------------------------
 LITES_BEACON      = DEFAULT
@@ -131,10 +129,11 @@ G_MFD             = DEFAULT
 G_GIA1            = DEFAULT
 G_GIA2            = DEFAULT
 G_GEA             = DEFAULT
+ADR1              = DEFAULT
+ADR2              = DEFAULT
+AHRS1             = DEFAULT
+AHRS2             = DEFAULT
 MAGNETOMETER      = DEFAULT
-
-#prüfen, ob bei G1000 ADC und/oder AHRS ausfallen können (oder ist das nur für Airliner)
-
 WXR_RADAR         = DEFAULT
 NAVCOM1           = DEFAULT
 NAVCOM2           = DEFAULT
@@ -177,8 +176,10 @@ ICE_DETECT        = DEFAULT
 LOC               = DEFAULT
 GLS               = DEFAULT
 GPS               = DEFAULT
-
-# maybe return com1/2 nav 1/2 again -> antennas / check in xp
+COM1              = DEFAULT
+COM2              = DEFAULT    
+NAV1              = DEFAULT   
+NAV2              = DEFAULT
 
 # ---- GEAR --------------------------------------------------
 GEAR_IND          = DEFAULT
@@ -268,6 +269,10 @@ G_MFD             = OFF
 G_GIA1            = OFF
 G_GIA2            = OFF
 G_GEA             = OFF
+ADR1              = OFF
+ADR2              = OFF
+AHRS1             = OFF
+AHRS2             = OFF
 MAGNETOMETER      = OFF
 WXR_RADAR         = OFF
 DME               = OFF
@@ -355,6 +360,8 @@ ALT_COPILOT       = OFF
 AHZ_COPILOT       = OFF
 G430_GPS1         = OFF
 G430_GPS2         = OFF
+ADR2              = OFF
+AHRS2             = OFF
 NAVCOM1           = OFF
 NAVCOM2           = OFF
 RPM_IND_2         = OFF
@@ -456,6 +463,10 @@ G_GIA1            = OFF
 G_GIA2            = OFF
 G_GEA             = OFF
 MAGNETOMETER      = OFF
+ADR1              = OFF
+ADR2              = OFF
+AHRS1             = OFF
+AHRS2             = OFF
 WXR_RADAR         = OFF
 NAVCOM1           = OFF
 NAVCOM2           = OFF
