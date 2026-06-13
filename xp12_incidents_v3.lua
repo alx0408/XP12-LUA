@@ -1428,12 +1428,15 @@ create_command(
 )
 
 function incidents_fuelcap_check()
-    fuel_cap_check_done = not fuel_cap_check_done
+    local new_state = not fuel_cap_check_done
+    fuel_cap_check_done   = new_state
+    fuel_drain_check_done = new_state
+    save_memory()
 end
 
 create_command(
     "FlyWithLua/Incidents/fuelcap_check",
-    "Incidents: toggle fuel cap preflight check on/off",
+    "Incidents: toggle fuel cap and drain preflight checks on/off",
     "incidents_fuelcap_check()", "", ""
 )
 
@@ -1465,7 +1468,6 @@ create_command(
 -- ---- Overvolt test mode ------------------------------------
 function incidents_overvolt_test()
     overvolt_routine.test = not overvolt_routine.test
-    inc_trigger_popup(overvolt_routine.test and "OV TEST: ON" or "OV TEST: OFF")
 end
 
 create_command(
@@ -1522,6 +1524,17 @@ create_command(
     "incidents_toggle_conditions()", "", ""
 )
 
+function incidents_toggle_threats()
+    threats_visible = not threats_visible
+    inc_trigger_popup(threats_visible and "THREATS: VISIBLE" or "THREATS: HIDDEN")
+end
+
+create_command(
+    "FlyWithLua/Incidents/toggle_threats",
+    "Incidents: show / hide threats and failures in status display",
+    "incidents_toggle_threats()", "", ""
+)
+
 -- ---- Per-failure toggle ------------------------------------
 local function make_toggle(f)
     local fn = "incidents_toggle_" .. f.key:lower()
@@ -1553,6 +1566,7 @@ for _, f in ipairs(failures) do make_toggle(f) end
 -- ============================================================
 
 incidents_show_status = false
+threats_visible       = false   -- global: toggle function and draw both access this
 
 function incidents_draw_status()
     -- startup popup: defer timing to first draw frame
@@ -1641,70 +1655,85 @@ function incidents_draw_status()
     end
 
 
-    -- green status entries (pre-computed for layout)
+    -- pre-compute visibility flags
     local show_cap_checked   = fuel_cap_check_done
     local show_drain_checked = fuel_drain_check_done
     local show_type_pending  = fuel_type_pending
-    local show_latch_1 = door_available(1) and door_routine.latched_1
-    local show_latch_2 = door_available(2) and door_routine.latched_2
+    local show_latch_1       = door_available(1) and door_routine.latched_1
+    local show_latch_2       = door_available(2) and door_routine.latched_2
+    local show_ov_test       = overvolt_routine.test   -- always shown when active, independent of threats_visible
 
-    -- layout: title + active failures + fuel quantities + green status lines
-    local show_ov_test = overvolt_routine.active and overvolt_routine.test
-    local extra_lines = (any_fuel and 1 or 0)
-                      + (show_cap_checked   and 1 or 0)
-                      + (show_drain_checked and 1 or 0)
-                      + (show_type_pending  and 1 or 0)
-                      + (bat_low and 1 or 0)
-                      + (show_ov_test and 1 or 0)
-                      + (show_latch_1 and 1 or 0)
-                      + (show_latch_2 and 1 or 0)
-    local top = y + 20 + (#active + extra_lines) * 20
+    -- line counts for height calculation
+    local guard_lines   = (show_cap_checked   and 1 or 0)
+                        + (show_drain_checked and 1 or 0)
+                        + (show_latch_1       and 1 or 0)
+                        + (show_latch_2       and 1 or 0)
+    local ov_line       = show_ov_test and 1 or 0
+    local threat_lines  = threats_visible and (
+                            #active
+                          + (any_fuel          and 1 or 0)
+                          + (show_type_pending and 1 or 0)
+                          + (bat_low           and 1 or 0)
+                        ) or 0
+    -- 3 fixed header lines + ov test (always) + guards always + threats conditional
+    local top = y + 20 + (2 + ov_line + guard_lines + threat_lines) * 20
     local cy  = top
 
+    -- line 1: script name
     graphics.set_color(1, 1, 1, 1)
-    local cond_str = conditions_enforced and "COND: ON" or "COND: OFF"
-    draw_string_Helvetica_18(x, cy, "[xp12 Incidents V3]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name .. "  " .. cond_str)
+    draw_string_Helvetica_18(x, cy, "xp12 Incidents   Status Display")
     cy = cy - 20
 
-    for _, label in ipairs(active) do
-        graphics.set_color(1, 0.2, 0.2, 1)
-        draw_string_Helvetica_18(x, cy, label .. ":   FAIL")
-        cy = cy - 20
-    end
+    -- line 2: mode + profile
+    graphics.set_color(1, 1, 1, 1)
+    draw_string_Helvetica_18(x, cy, "MODE: " .. mode_str .. "   PROFILE: " .. cfg.active_name)
+    cy = cy - 20
 
-    -- fuel tank quantities (shown when any fuel routine is active)
-    if any_fuel then
-        local t1 = read_tank(1)
-        local t2 = read_tank(2)
-        local fmt = function(v) return v and string.format("%.1f", v) or "?" end
-        graphics.set_color(1, 0.85, 0.2, 1)
-        draw_string_Helvetica_18(x, cy,
-            string.format("[Fuel]  T1: %s kg   T2: %s kg", fmt(t1), fmt(t2)))
-        cy = cy - 20
-    end
+    -- line 3: threats visibility + conditions
+    local cond_str = conditions_enforced and "COND: ON" or "COND: OFF"
+    graphics.set_color(1, 1, 1, 1)
+    draw_string_Helvetica_18(x, cy, (threats_visible and "THREATS: VISIBLE" or "THREATS: HIDDEN") .. "   " .. cond_str)
+    cy = cy - 20
 
-    -- orange warning: fuel type risk pending
-    if show_type_pending then
-        graphics.set_color(1.0, 0.6, 0.1, 1)
-        draw_string_Helvetica_18(x, cy, "FUEL TYPE: PENDING")
-        cy = cy - 20
-    end
-
-    -- orange warning: battery low charge
-    if bat_low then
-        graphics.set_color(1.0, 0.6, 0.1, 1)
-        draw_string_Helvetica_18(x, cy, "BAT: LOW")
-        cy = cy - 20
-    end
-
-    -- orange warning: overvoltage test mode active
+    -- overvoltage test: always shown in orange when active, independent of threats_visible
     if show_ov_test then
         graphics.set_color(1.0, 0.6, 0.1, 1)
         draw_string_Helvetica_18(x, cy, "OVERVOLTAGE TEST MODE")
         cy = cy - 20
     end
 
-    -- green status lines
+    -- failures + threats (only when visible)
+    if threats_visible then
+        for _, label in ipairs(active) do
+            graphics.set_color(1, 0.2, 0.2, 1)
+            draw_string_Helvetica_18(x, cy, label .. ":   FAIL")
+            cy = cy - 20
+        end
+
+        if any_fuel then
+            local t1  = read_tank(1)
+            local t2  = read_tank(2)
+            local fmt = function(v) return v and string.format("%.1f", v) or "?" end
+            graphics.set_color(1, 0.85, 0.2, 1)
+            draw_string_Helvetica_18(x, cy,
+                string.format("[Fuel]  T1: %s kg   T2: %s kg", fmt(t1), fmt(t2)))
+            cy = cy - 20
+        end
+
+        if show_type_pending then
+            graphics.set_color(1.0, 0.6, 0.1, 1)
+            draw_string_Helvetica_18(x, cy, "FUEL TYPE: PENDING")
+            cy = cy - 20
+        end
+
+        if bat_low then
+            graphics.set_color(1.0, 0.6, 0.1, 1)
+            draw_string_Helvetica_18(x, cy, "BAT: LOW")
+            cy = cy - 20
+        end
+    end
+
+    -- guards (always visible)
     if show_cap_checked or show_drain_checked or show_latch_1 or show_latch_2 then
         graphics.set_color(0.3, 1.0, 0.3, 1)
         if show_cap_checked then

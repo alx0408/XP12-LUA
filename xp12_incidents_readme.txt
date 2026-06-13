@@ -56,18 +56,32 @@ Popups (shown for 5 seconds in the status overlay area):
   "FUEL TANK DRAINED"
   "DOOR 1 LATCHED" / "DOOR 2 LATCHED" / "DOORS LATCHED"
   
-Status display can be toggled via FLW-macro or assigned key:
-  Shows current mode, conditions enforcement state, 
-  all currently active guards and failures.
+Status display can be toggled via FLW-macro or assigned key.
+The display has a fixed header and two sections below:
 
-Status display special entries (for guards or pending conditions):
-  "FUEL TYPE: PENDING"  (orange) Refueling detected — FUEL_TYPE failure possible on ground.
-  "FUEL TANKS: DRAINED" (green)  Drain check done — FUEL_WATER blocked.
-  "FUEL CAPS: CHECKED"  (green)  Cap check done — FUEL_CAP blocked.
-  "DOOR 1/2: LATCHED"   (green)  Door latch guard active.
-  "BAT: LOW"            (orange) Battery charge below 25 % of maximum capacity.
-  "OVERVOLTAGE TEST MODE" (orange) Cascade running in accelerated test mode
-                                 (≈80 % failure probability per minute).
+  Header (always visible, white):
+    Line 1: "xp12 Incidents   Status Display"
+    Line 2: "MODE: <mode>   PROFILE: <profile>"
+    Line 3: "THREATS: HIDDEN/VISIBLE   COND: ON/OFF"
+
+  OVERVOLTAGE TEST MODE (always visible when active, orange)
+    Shown directly below the header whenever overvolt test mode is armed,
+    regardless of the threats visibility setting. No popup is shown.
+
+  THREATS + FAILURES (above guards, toggleable)
+    Active failures (red) and threat warnings (orange). Hidden by default
+    so the pilot cannot see what is lurking. Toggle with:
+      FlyWithLua/Incidents/toggle_threats
+    Popup and status line confirm current state.
+      "FUEL TYPE: PENDING"    (orange) Refueling detected — FUEL_TYPE possible.
+      "BAT: LOW"              (orange) Battery charge below 25 % of maximum.
+
+  GUARDS (bottom, always visible, green)
+    Active preflight and safety guards — always shown regardless of the
+    threats visibility setting.
+      "FUEL CAPS: CHECKED"  Cap check done — FUEL_CAP blocked.
+      "FUEL TANKS: DRAINED" Drain check done — FUEL_WATER blocked.
+      "DOOR 1/2: LATCHED"   Door latch guard active.
 
 Global commands:
   FlyWithLua/Incidents/toggle system       Pause / resume all automatic triggering.
@@ -78,6 +92,12 @@ Global commands:
                                            same conditions as auto triggers.
   FlyWithLua/Incidents/latch_all_doors     Latch all available doors. Toggle:
                                            if all already latched, unlatches all.
+  FlyWithLua/Incidents/fuelcap_check       Toggle fuel cap AND drain preflight
+                                           checks on/off together. Both guards set
+                                           or cleared in sync. Cap check also
+                                           triggers automatically via external view
+                                           (see FUEL_CAP). Drain check also
+                                           settable via drain_fuel_tanks command.
   FlyWithLua/Incidents/drain_fuel_tanks    Fuel drain preflight check. Only works
                                            in external view with engine off.
                                            Blocks FUEL_WATER for that flight.
@@ -85,9 +105,14 @@ Global commands:
   FlyWithLua/Incidents/recharge_bat        Recharge battery to 80 % of maximum
                                            capacity. Alternative to native ground
                                            power. Popup "Recharged" confirms.
+  FlyWithLua/Incidents/toggle_threats      Show / hide threats and failures in the
+                                           status display. Guards (green) are always
+                                           visible. Default: HIDDEN.
   FlyWithLua/Incidents/overvolt_test       Accelerated overvoltage test — raises
                                            cascade probability to ≈80 % per minute
                                            for all tiers. Test / debug only.
+                                           Active state shown in status display
+                                           (orange, always visible). No popup.
 
 Per-failure commands (one per failure):
   FlyWithLua/Incidents/<failure_key_lowercase>
