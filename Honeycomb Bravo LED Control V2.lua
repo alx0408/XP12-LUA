@@ -68,18 +68,61 @@ HB_LED_USE_HYD_LED = true
 
 
 ---------------------------------------------------------------------
+-- AIRCRAFT LOAD HOOK
+---------------------------------------------------------------------
+
+-- Some FlyWithLua versions do not provide do_on_aircraft_load().
+-- This shim maps to the closest available hook.
+if type(do_on_aircraft_load) ~= "function" then
+    if type(do_on_aircraft_load_once) == "function" then
+        do_on_aircraft_load = do_on_aircraft_load_once
+    elseif type(do_on_new_aircraft) == "function" then
+        do_on_aircraft_load = do_on_new_aircraft
+    else
+        -- Last resort: execute immediately (no aircraft-change hook available)
+        function do_on_aircraft_load(code)
+            if type(code) == "string" then
+                if type(do_string) == "function" then
+                    do_string(code)
+                else
+                    local f = loadstring(code)
+                    if type(f) == "function" then f() end
+                end
+            end
+        end
+    end
+end
+
+---------------------------------------------------------------------
 -- AIRCRAFT IDENTIFICATION
 ---------------------------------------------------------------------
 
-if PLANE_ICAO == "C172" then
-    HB_AIRCRAFT_PROFILE = "C172"
-elseif PLANE_ICAO == "SR22" then
-    HB_AIRCRAFT_PROFILE = "SR22"
-else
-    HB_AIRCRAFT_PROFILE = "DEFAULT"
+function hb_identify_aircraft()
+    if PLANE_ICAO == "C172" then
+        HB_AIRCRAFT_PROFILE = "C172"
+    elseif PLANE_ICAO == "SR22" then
+        HB_AIRCRAFT_PROFILE = "SR22"
+    elseif PLANE_ICAO == "A20N" then
+        HB_AIRCRAFT_PROFILE = "A20N"
+    else
+        HB_AIRCRAFT_PROFILE = "DEFAULT"
+    end
+
+    write_log('INFO Honeycomb Bravo detected aircraft profile: ' .. tostring(HB_AIRCRAFT_PROFILE) .. ' (ICAO=' .. tostring(PLANE_ICAO) .. ')')
 end
 
-write_log('INFO Honeycomb Bravo detected aircraft profile: ' .. tostring(HB_AIRCRAFT_PROFILE) .. ' (ICAO=' .. tostring(PLANE_ICAO) .. ')')
+do_on_aircraft_load("hb_identify_aircraft()")
+
+-- ===== PROBE (temporär): klaert, wie FlyWithLua bei Flugzeugwechsel reagiert =====
+-- In X-Plane Log.txt lesen. Beim Wechsel OHNE manuelles Reload:
+--   "PROBE body"  erscheint erneut  -> FlyWithLua laedt Skripte komplett neu
+--   nur "PROBE hook"                -> do_on_aircraft_load funktioniert (kein Full-Reload)
+--   weder noch                      -> kein Hook, manuelles Reload noetig
+write_log('PROBE body  (script file executed)')
+function hb_load_probe()
+    write_log('PROBE hook  (do_on_aircraft_load fired)')
+end
+do_on_aircraft_load("hb_load_probe()")
 
 
 ---------------------------------------------------------------------
@@ -131,19 +174,23 @@ local cabin_door = dataref_table('sim/cockpit2/annunciators/cabin_door_open')
 -- AIRCRAFT SETTINGS
 ---------------------------------------------------------------------
 
--- Defaults (generic)
-HB_LED_NAV_INCLUDES_GPSS = false
-HB_LED_HDG_GA_FILTER = false
-HB_LED_USE_GEAR_LEDS = true
-HB_LED_USE_HYD_LED = true
+function hb_apply_aircraft_settings()
+    -- Defaults (generic)
+    HB_LED_NAV_INCLUDES_GPSS = false
+    HB_LED_HDG_GA_FILTER = false
+    HB_LED_USE_GEAR_LEDS = true
+    HB_LED_USE_HYD_LED = true
 
--- GA overrides (C172 / SR22)
-if HB_AIRCRAFT_PROFILE == "C172" or HB_AIRCRAFT_PROFILE == "SR22" then
-    HB_LED_NAV_INCLUDES_GPSS = true
-    HB_LED_HDG_GA_FILTER = true
-    HB_LED_USE_GEAR_LEDS = false
-    HB_LED_USE_HYD_LED = false
+    -- GA overrides (C172 / SR22)
+    if HB_AIRCRAFT_PROFILE == "C172" or HB_AIRCRAFT_PROFILE == "SR22" then
+        HB_LED_NAV_INCLUDES_GPSS = true
+        HB_LED_HDG_GA_FILTER = true
+        HB_LED_USE_GEAR_LEDS = false
+        HB_LED_USE_HYD_LED = false
+    end
 end
+
+do_on_aircraft_load("hb_apply_aircraft_settings()")
 
 ---------------------------------------------------------------------
 -- CORE LED/AP LOGIC
@@ -260,6 +307,18 @@ send_hid_data()
 hid_open(10571, 6401) -- safeguard feature for .joy axes to operate: HID must be reopened 
 
 function handle_led_changes()
+    if HB_AIRCRAFT_PROFILE == "A20N" then
+        -- A20N: keine LEDs gewuenscht. Guenstiger Check, kein DataRef-Zugriff.
+        if master_state == true then
+            master_state = false
+            all_leds_off()
+        end
+        if buffer_modified == true then
+            send_hid_data()
+        end
+        return
+    end
+
     if bus_voltage[0] > 0 then
         master_state = true
 
@@ -448,7 +507,27 @@ create_command(
 
 
 
-do_often("handle_led_changes()")
+HB_LED_TICK_REGISTERED = false
+
+function hb_update_led_tick_registration()
+    if HB_AIRCRAFT_PROFILE == "A20N" then
+        -- A20N: keine LEDs benoetigt. Einmalig ausschalten.
+        -- Tick bleibt unregistriert, falls er noch nie gebraucht wurde;
+        -- war er schon aktiv (vorheriges Flugzeug), greift der Guard
+        -- oben in handle_led_changes() und haelt die Kosten minimal.
+        all_leds_off()
+        send_hid_data()
+        write_log('INFO A20N detected - Bravo LEDs disabled.')
+        return
+    end
+
+    if not HB_LED_TICK_REGISTERED then
+        do_often("handle_led_changes()")
+        HB_LED_TICK_REGISTERED = true
+    end
+end
+
+do_on_aircraft_load("hb_update_led_tick_registration()")
 
 function exit_handler()
     all_leds_off()

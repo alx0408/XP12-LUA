@@ -516,3 +516,15 @@ AIL_TRIM_RUN      = OFF
 RUD_TRIM_RUN      = OFF
 TRIM_AIL          = OFF
 TRIM_RUD          = OFF
+
+# ============================================================
+#  A320 — Airbus A320neo (ToLiss)
+# ============================================================
+# Profile-level kill switch: script loads and identifies this
+# aircraft normally, but MODE = OFF disables ALL automatic
+# failure injection for it, regardless of individual failure
+# keys below or any new ones added to [DEFAULT] later.
+
+[A320]
+ICAO = A20N
+MODE = OFF

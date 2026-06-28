@@ -229,7 +229,7 @@ end
 -- command for key / button assignment
 create_command(
     "FlyWithLua/ToLiss/altitude100-1000",
-    "Toggle altitude increment between 100 ft and 1000 ft (ToLiss only)",
+    "Toggle altitude increment between 100 ft and 1000 ft",
     "toggle_altitude100_1000()",
     "",
     ""
@@ -319,273 +319,71 @@ create_command(
 
 
 ----------------------------
--- PULL (short) PUSH (long)
+-- AP1 / AP2 (short=AP1, long=AP2)
 ----------------------------
 
 -- Double assignment to one key/button
--- Short press (<0,5s): PULL (selected)
--- Long  press (>=0,5s): PUSH (managed)
--- ALT / VS / SPD / AP1-AP2
+-- Short press (<0,5s): AP1
+-- Long  press (>=0,5s): AP2
 
-local ALT_PP_THRESHOLD = 0.5
-local alt_pp_press_t = 0
-local alt_pp_fired = false
+local AP_PP_THRESHOLD = 0.5
+local ap_pp_press_t = 0
+local ap_pp_fired = false
 
-local cmd_alt_pull = nil
-local cmd_alt_push = nil
+local cmd_ap1_push = nil
+local cmd_ap2_push = nil
 
-function alt_pp_init_cmds()
-    if XPLMFindCommand then
-        if not cmd_alt_pull then cmd_alt_pull = XPLMFindCommand("AirbusFBW/PullAltitude") end
-        if not cmd_alt_push then cmd_alt_push = XPLMFindCommand("AirbusFBW/PushAltitude") end
-    end
-end
-
-alt_pp_init_cmds()
-
-if do_on_aircraft_load then
-    do_on_aircraft_load("alt_pp_init_cmds()")
-end
-
-function alt_pp_begin()
-    alt_pp_press_t = os.clock()
-    alt_pp_fired = false
-end
-
-function alt_pp_hold()
-    if alt_pp_fired then return end
-    if (os.clock() - alt_pp_press_t) >= ALT_PP_THRESHOLD then
-        if cmd_alt_push and XPLMCommandOnce then
-            XPLMCommandOnce(cmd_alt_push)
-        elseif command_once then
-            command_once("AirbusFBW/PushAltitude")
-        end
-        alt_pp_fired = true
-    end
-end
-
-function alt_pp_end()
-    if not alt_pp_fired then
-        if cmd_alt_pull and XPLMCommandOnce then
-            XPLMCommandOnce(cmd_alt_pull)
-        elseif command_once then
-            command_once("AirbusFBW/PullAltitude")
-        end
-    end
-    alt_pp_press_t = 0
-    alt_pp_fired = false
-end
-
--- 1) ALT pull/push
-
-create_command(
-    "FlyWithLua/ToLiss/ALT_pull_push",
-    "ALT knob pull (<0.5s) / push (>=0.5s)",
-    "alt_pp_begin()",
-    "alt_pp_hold()",
-    "alt_pp_end()"
-)
-
-
--- Cache commands
-local cmd_vs_pull, cmd_vs_push = nil, nil
-local cmd_spd_pull, cmd_spd_push = nil, nil
-local cmd_ap1_push, cmd_ap2_push = nil, nil
-
-function pp_init_more_cmds()
+function ap_pp_init_cmds()
     if not XPLMFindCommand then return end
-
-    if not cmd_vs_pull  then cmd_vs_pull  = XPLMFindCommand("AirbusFBW/PullVSSel") end
-    if not cmd_vs_push  then cmd_vs_push  = XPLMFindCommand("AirbusFBW/PushVSSel") end
-
-    if not cmd_spd_pull then cmd_spd_pull = XPLMFindCommand("AirbusFBW/PullSPDSel") end
-    if not cmd_spd_push then cmd_spd_push = XPLMFindCommand("AirbusFBW/PushSPDSel") end
-
-    if not cmd_ap1_push then cmd_ap1_push = XPLMFindCommand("toliss_airbus/ap1_push") end
-    if not cmd_ap2_push then cmd_ap2_push = XPLMFindCommand("toliss_airbus/ap2_push") end
+    -- Unconditional re-resolve on every aircraft load (ToLiss plugin
+    -- unloads/reloads with the aircraft, cached refs would go stale).
+    cmd_ap1_push = XPLMFindCommand("toliss_airbus/ap1_push")
+    cmd_ap2_push = XPLMFindCommand("toliss_airbus/ap2_push")
 end
 
-pp_init_more_cmds()
+ap_pp_init_cmds()
 
 if do_on_aircraft_load then
-    do_on_aircraft_load("pp_init_more_cmds()")
+    do_on_aircraft_load("ap_pp_init_cmds()")
 end
 
--- Generic state machine for one pull/push command
-local function make_pp(name, desc, short_cmd_ref, short_cmd_str, long_cmd_ref, long_cmd_str)
-    local t0 = 0
-    local fired = false
+function ap_pp_begin()
+    ap_pp_press_t = os.clock()
+    ap_pp_fired = false
+end
 
-    _G[name .. "_begin"] = function()
-        t0 = os.clock()
-        fired = false
+function ap_pp_hold()
+    if ap_pp_fired then return end
+    if (os.clock() - ap_pp_press_t) >= AP_PP_THRESHOLD then
+        if cmd_ap2_push and XPLMCommandOnce then
+            XPLMCommandOnce(cmd_ap2_push)
+        elseif command_once then
+            command_once("toliss_airbus/ap2_push")
+        end
+        ap_pp_fired = true
     end
+end
 
-    _G[name .. "_hold"] = function()
-        if fired then return end
-        if (os.clock() - t0) >= ALT_PP_THRESHOLD then
-            if long_cmd_ref and XPLMCommandOnce then
-                XPLMCommandOnce(long_cmd_ref)
-            elseif command_once then
-                command_once(long_cmd_str)
-            end
-            fired = true
+function ap_pp_end()
+    if not ap_pp_fired then
+        if cmd_ap1_push and XPLMCommandOnce then
+            XPLMCommandOnce(cmd_ap1_push)
+        elseif command_once then
+            command_once("toliss_airbus/ap1_push")
         end
     end
-
-    _G[name .. "_end"] = function()
-        if not fired then
-            if short_cmd_ref and XPLMCommandOnce then
-                XPLMCommandOnce(short_cmd_ref)
-            elseif command_once then
-                command_once(short_cmd_str)
-            end
-        end
-        t0 = 0
-        fired = false
-    end
-
-    create_command(
-        "FlyWithLua/ToLiss/" .. desc,
-        desc .. " (<0.5s short / >=0.5s long)",
-        name .. "_begin()",
-        name .. "_hold()",
-        name .. "_end()"
-    )
-end
-
--- 2) VS pull/push
-make_pp(
-    "pp_vs",
-    "VS_pull_push",
-    cmd_vs_pull,
-    "AirbusFBW/PullVSSel",
-    cmd_vs_push,
-    "AirbusFBW/PushVSSel"
-)
-
--- 3) Speed pull/push
-make_pp(
-    "pp_spd",
-    "Speed_pull_push",
-    cmd_spd_pull,
-    "AirbusFBW/PullSPDSel",
-    cmd_spd_push,
-    "AirbusFBW/PushSPDSel"
-)
-
-
--- 4) Autopilot 1 / Autopilot 2 (short=AP1, long=AP2)
-make_pp(
-    "pp_ap",
-    "Autopilot_1_Autopilot_2",
-    cmd_ap1_push,
-    "toliss_airbus/ap1_push",
-    cmd_ap2_push,
-    "toliss_airbus/ap2_push"
-)
-
-
-----------------------------
--- QNH pull/push (SPECIAL HANDLING)
-----------------------------
-
--- ToLiss baro pull/push behaves more reliably when sent as BEGIN/END pulse
-
-local qnh_pending_end = false
-local qnh_end_time = 0
-local qnh_end_cmd_ref = nil
-local qnh_end_cmd_str = ""
-
-function qnh_pulse_begin_end(cmd_ref, cmd_str)
-    -- Prefer XPLM begin/end if available, else FlyWithLua command_begin/end.
-    if cmd_ref and XPLMCommandBegin and XPLMCommandEnd then
-        XPLMCommandBegin(cmd_ref)
-        qnh_pending_end = true
-        qnh_end_time = os.clock() + 0.05
-        qnh_end_cmd_ref = cmd_ref
-        qnh_end_cmd_str = ""
-        return
-    end
-
-    if command_begin and command_end and cmd_str and cmd_str ~= "" then
-        command_begin(cmd_str)
-        qnh_pending_end = true
-        qnh_end_time = os.clock() + 0.05
-        qnh_end_cmd_ref = nil
-        qnh_end_cmd_str = cmd_str
-        return
-    end
-
-    -- Fallback
-    if cmd_ref and XPLMCommandOnce then
-        XPLMCommandOnce(cmd_ref)
-    elseif command_once and cmd_str and cmd_str ~= "" then
-        command_once(cmd_str)
-    end
-end
-
-function qnh_pulse_update()
-    if not qnh_pending_end then return end
-    if qnh_end_time <= 0 or os.clock() < qnh_end_time then return end
-
-    if qnh_end_cmd_ref and XPLMCommandEnd then
-        XPLMCommandEnd(qnh_end_cmd_ref)
-    elseif qnh_end_cmd_str ~= "" and command_end then
-        command_end(qnh_end_cmd_str)
-    end
-
-    qnh_pending_end = false
-    qnh_end_cmd_ref = nil
-    qnh_end_cmd_str = ""
-    qnh_end_time = 0
-end
-
-do_every_frame("qnh_pulse_update()")
-
--- Dedicated state machine for QNH
-local qnh_t0 = 0
-local qnh_fired = false
-
-function pp_qnh_begin()
-    qnh_t0 = os.clock() or 0
-    qnh_fired = false
-end
-
-function pp_qnh_hold()
-    if qnh_fired then return end
-
-    -- Defensive: ensure numeric values
-    local t0 = qnh_t0
-    if type(t0) ~= "number" then t0 = os.clock() or 0 end
-
-    local thr = ALT_PP_THRESHOLD
-    if type(thr) ~= "number" then thr = 0.5 end
-
-    local dt = (os.clock() or 0) - t0
-    if dt >= thr then
-        -- long: PUSH
-        qnh_pulse_begin_end(cmd_qnh_push, "toliss_airbus/capt_baro_push")
-        qnh_fired = true
-    end
-end
-
-function pp_qnh_end()
-    if not qnh_fired then
-        -- short: PULL
-        qnh_pulse_begin_end(cmd_qnh_pull, "toliss_airbus/capt_baro_pull")
-    end
-    qnh_t0 = 0
-    qnh_fired = false
+    ap_pp_press_t = 0
+    ap_pp_fired = false
 end
 
 create_command(
-    "FlyWithLua/ToLiss/QNH_pull_push",
-    "QNH_pull_push (<0.5s short / >=0.5s long)",
-    "pp_qnh_begin()",
-    "pp_qnh_hold()",
-    "pp_qnh_end()"
+    "FlyWithLua/ToLiss/Autopilot_1_Autopilot_2",
+    "Autopilot_1_Autopilot_2 (<0.5s short / >=0.5s long)",
+    "ap_pp_begin()",
+    "ap_pp_hold()",
+    "ap_pp_end()"
 )
+
 
 ----------------------------
 -- TCAS ALT abv / blw
@@ -652,6 +450,166 @@ create_command(
     "FlyWithLua/ToLiss/Probe_Heat_toggle",
     "Toggle Probe Heat",
     "toggle_probe_heat()",
+    "",
+    ""
+)
+
+----------------------------
+-- PITCH TRIM MULTIPLIER (5x, gleichmäßig)
+----------------------------
+
+-- Anzahl der Trim-Impulse pro Tastendruck. Bei Bedarf hier ändern.
+TOLISS_TRIM_PULSES_PER_EVENT = 5
+TOLISS_TRIM_PULSE_SEC = 0.05
+
+local toliss_trim_cmd_up = "sim/flight_controls/pitch_trim_up"
+local toliss_trim_cmd_dn = "sim/flight_controls/pitch_trim_down"
+
+local toliss_trim_active = false
+local toliss_trim_active_cmd = nil
+local toliss_trim_end_time = 0.0
+local toliss_trim_pulses_left = 0
+local toliss_trim_next_cmd = nil
+
+function toliss_trim_start_pulse(cmd)
+    toliss_trim_active = true
+    toliss_trim_active_cmd = cmd
+    toliss_trim_end_time = os.clock() + TOLISS_TRIM_PULSE_SEC
+    command_begin(cmd)
+end
+
+function toliss_trim_tick()
+    if toliss_trim_active and os.clock() >= toliss_trim_end_time then
+        command_end(toliss_trim_active_cmd)
+        toliss_trim_active = false
+        toliss_trim_active_cmd = nil
+
+        if toliss_trim_pulses_left > 0 then
+            toliss_trim_pulses_left = toliss_trim_pulses_left - 1
+            toliss_trim_start_pulse(toliss_trim_next_cmd)
+        end
+    end
+end
+
+do_often("toliss_trim_tick()")
+
+-- direction: >0 up, <0 down. Wird im "Hold"-Slot des Commands aufgerufen,
+-- d.h. bei Dauerdruck wiederholt sich der Impulsblock laufend.
+function toliss_trim_multi(direction)
+    local cmd = (direction < 0) and toliss_trim_cmd_dn or toliss_trim_cmd_up
+
+    toliss_trim_next_cmd = cmd
+    toliss_trim_pulses_left = math.max(0, TOLISS_TRIM_PULSES_PER_EVENT - 1)
+
+    if not toliss_trim_active then
+        toliss_trim_start_pulse(cmd)
+    end
+end
+
+create_command(
+    "FlyWithLua/ToLiss/Pitch_trim_up_multi",
+    "Pitch trim up (emulated)",
+    "",
+    "toliss_trim_multi(1)",
+    ""
+)
+
+create_command(
+    "FlyWithLua/ToLiss/Pitch_trim_down_multi",
+    "Pitch trim down (emulated)",
+    "",
+    "toliss_trim_multi(-1)",
+    ""
+)
+
+----------------------------
+-- A-SKID & NWS SWITCH ON/OFF
+----------------------------
+
+local dr_askid_nws = nil
+local dr_askid_anim = nil
+
+function askid_nws_init()
+    if not (XPLMFindDataRef and XPLMSetDatai and XPLMSetDataf) then return end
+    dr_askid_nws = XPLMFindDataRef("AirbusFBW/NWSnAntiSkid")
+    dr_askid_anim = XPLMFindDataRef("ckpt/askidSwitch/anim")
+end
+
+askid_nws_init()
+if do_on_aircraft_load then
+    do_on_aircraft_load("askid_nws_init()")
+end
+
+function askid_nws_on()
+    if dr_askid_nws and XPLMSetDatai then XPLMSetDatai(dr_askid_nws, 1) end
+    if dr_askid_anim and XPLMSetDataf then XPLMSetDataf(dr_askid_anim, 1) end
+end
+
+function askid_nws_off()
+    if dr_askid_nws and XPLMSetDatai then XPLMSetDatai(dr_askid_nws, 0) end
+    if dr_askid_anim and XPLMSetDataf then XPLMSetDataf(dr_askid_anim, 0) end
+end
+
+create_command(
+    "FlyWithLua/ToLiss/ASkidNWS_on",
+    "A-Skid & NWS ON",
+    "askid_nws_on()",
+    "",
+    ""
+)
+
+create_command(
+    "FlyWithLua/ToLiss/ASkidNWS_off",
+    "A-Skid & NWS OFF",
+    "askid_nws_off()",
+    "",
+    ""
+)
+
+----------------------------
+-- COCKPIT DOOR LOCK UP/DOWN
+----------------------------
+
+local dr_door_lock = nil
+
+function door_lock_init()
+    if not (XPLMFindDataRef and XPLMGetDatai and XPLMSetDatai) then return end
+    dr_door_lock = XPLMFindDataRef("ckpt/doorLock")
+end
+
+door_lock_init()
+if do_on_aircraft_load then
+    do_on_aircraft_load("door_lock_init()")
+end
+
+function cockpit_door_up()
+    if not dr_door_lock then return end
+    local v = XPLMGetDatai(dr_door_lock)
+    if v < 2 then
+        XPLMSetDatai(dr_door_lock, v + 1)
+    end
+end
+
+function cockpit_door_down()
+    if not dr_door_lock then return end
+    local v = XPLMGetDatai(dr_door_lock)
+    if v > 0 then
+        XPLMSetDatai(dr_door_lock, v - 1)
+    end
+end
+
+create_command(
+    "FlyWithLua/ToLiss/CockpitDoorUp",
+    "Cockpit Door Lock +1 (max 2)",
+    "cockpit_door_up()",
+    "",
+    ""
+)
+
+create_command(
+    "FlyWithLua/ToLiss/CockpitDoorDown",
+    "Cockpit Door Lock -1 (min 0)",
+    "cockpit_door_down()",
     "",
     ""
 )

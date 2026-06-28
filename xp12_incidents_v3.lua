@@ -262,7 +262,7 @@ local function load_config()
             if hdr then
                 section = hdr:upper()
                 if not cfg.profiles[section] then
-                    cfg.profiles[section] = { icao = {}, failures = {} }
+                    cfg.profiles[section] = { icao = {}, failures = {}, mode = nil }
                 end
             else
                 local key, val = line:match("^([%w_]+)%s*=%s*(.+)$")
@@ -282,6 +282,11 @@ local function load_config()
                             for icao in val:gmatch("[^,%s]+") do
                                 table.insert(cfg.profiles[section].icao, icao:upper())
                             end
+                        elseif key == "MODE" then
+                            -- Profile-level kill switch (mirrors the global MODE).
+                            -- MODE = OFF disables all automatic failure injection
+                            -- for this profile, regardless of individual failure keys.
+                            cfg.profiles[section].mode = val:upper()
                         else
                             local mtbf = parse_failure_entry(val)
                             cfg.profiles[section].failures[key] = { mtbf = mtbf }
@@ -297,7 +302,8 @@ end
 local function build_active_profile()
     local icao = ((dr_acf_icao or ""):match("^([^%z]*)") or ""):upper():match("^%s*(.-)%s*$")
     cfg.active_failures = {}
-    cfg.active_name     = "DEFAULT"
+    cfg.active_name      = "DEFAULT"
+    cfg.active_profile_off = false
     local default = cfg.profiles["DEFAULT"]
     if default then
         for k, v in pairs(default.failures) do cfg.active_failures[k] = v end
@@ -309,6 +315,7 @@ local function build_active_profile()
                 if pid == icao then
                     for k, v in pairs(prof.failures) do cfg.active_failures[k] = v end
                     cfg.active_name = name
+                    cfg.active_profile_off = (prof.mode == "OFF")
                     matched = true
                     break
                 end
@@ -1798,6 +1805,7 @@ function incidents_tick()
     tick_last = now
     if system_paused then return end
     if cfg.mode == "OFF" then return end
+    if cfg.active_profile_off then return end
 
     if type(cfg.mode) == "number" then
         if rnd_scheduled and not rnd_fired and os.clock() >= rnd_fire_at then
@@ -1862,6 +1870,7 @@ do_sometimes("incidents_tick()")
 function incidents_fix_tick()
     if system_paused then return end
     if cfg.mode == "OFF" then return end
+    if cfg.active_profile_off then return end
     for _, f in ipairs(failures) do
         local fix_cond = f._fix_cond or (f.fix and f.fix.cond)
         if fix_cond and get_dr(f) == 6 and fix_cond() then

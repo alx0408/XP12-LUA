@@ -156,17 +156,17 @@ last_hdg = -1
 last_nav = -1
 last_combo_fire = -1
 
-dataref("t", "sim/time/total_running_time_sec", "readonly")
+dataref("ac_runtime", "sim/time/total_running_time_sec", "readonly")
 
 function hdg_pressed()
     if AIRCRAFT_PROFILE ~= "C172" then return end
-    last_hdg = t
+    last_hdg = ac_runtime
     check_hdg_nav()
 end
 
 function nav_pressed()
     if AIRCRAFT_PROFILE ~= "C172" then return end
-    last_nav = t
+    last_nav = ac_runtime
     check_hdg_nav()
 end
 
@@ -174,13 +174,13 @@ function check_hdg_nav()
     if AIRCRAFT_PROFILE ~= "C172" then return end
     if last_hdg < 0 or last_nav < 0 then return end
 
-    if last_combo_fire >= 0 and (t - last_combo_fire) < HDG_NAV_COOLDOWN then
+    if last_combo_fire >= 0 and (ac_runtime - last_combo_fire) < HDG_NAV_COOLDOWN then
         return
     end
 
     if math.abs(last_hdg - last_nav) <= HDG_NAV_WINDOW then
         command_once("sim/autopilot/hdg_nav")
-        last_combo_fire = t
+        last_combo_fire = ac_runtime
         last_hdg = -1
         last_nav = -1
     end

@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------
--- rotAIR Enhancers 1.5
+-- rotAIR Enhancers 2.0
 -- HDG encoder acceleration via FlyWithLua create_command()
 -- Commands appear as: FlyWithLua/rotAIR/[command]
 --

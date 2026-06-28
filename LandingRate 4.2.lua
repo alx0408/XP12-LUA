@@ -198,6 +198,18 @@ end
 -- 6) ANZEIGEBOX
 ------------------------------------------------------------
 
+-- Direkter Dispatch auf die feste Helvetica-Funktion (10/12/18),
+-- statt pro Frame via loadstring() zu kompilieren.
+function lrl_draw_text(x, y, text)
+	if lrl_FONTSIZE == 10 then
+		draw_string_Helvetica_10(x, y, text)
+	elseif lrl_FONTSIZE == 12 then
+		draw_string_Helvetica_12(x, y, text)
+	else
+		draw_string_Helvetica_18(x, y, text)
+	end
+end
+
 function lrl_loopCallback()
 
 	-- startup popup: defer timing to first draw frame
@@ -248,15 +260,13 @@ function lrl_loopCallback()
 				-- Zeile 1: farbig + blinkend + Kontur
 				graphics.set_color(m.r, m.g, m.b, m.a)
 				if os.clock() % 0.5 >= 0.25 then
-					local code = string.format("draw_string_Helvetica_%d(%f, %f, '%s');\n", lrl_FONTSIZE, tx, ty, text)
-					code = code .. string.format("draw_string_Helvetica_%d(%f, %f, '%s');\n", lrl_FONTSIZE, tx + 1, ty, text)
-					assert(loadstring(code))()
+					lrl_draw_text(tx, ty, text)
+					lrl_draw_text(tx + 1, ty, text)
 				end
 			else
 				-- Zeile 2–3: weiß, ohne Blinken
 				graphics.set_color(1.0, 1.0, 1.0, 1.0)
-				local code = string.format("draw_string_Helvetica_%d(%f, %f, '%s');\n", lrl_FONTSIZE, tx, ty, text)
-				assert(loadstring(code))()
+				lrl_draw_text(tx, ty, text)
 			end
 		end
 	end
@@ -267,8 +277,7 @@ function lrl_loopCallback()
 		local tx = xpos + xoffset
 		local ty = ypos + yoffset - (3 * yspacing)
 		graphics.set_color(1.0, 1.0, 1.0, 1.0)
-		local code = string.format("draw_string_Helvetica_%d(%f, %f, '%s');\n", lrl_FONTSIZE, tx, ty, line4)
-		assert(loadstring(code))()
+		lrl_draw_text(tx, ty, line4)
 	end
 
 		end
@@ -289,7 +298,7 @@ function lrl_loopCallback()
 
 		-- Wenn noch keine Messwerte existieren, zeige eine neutrale Begrüßung
 		if (lrl_landingRate == nil and (lrl_popupText == nil or #lrl_popupText == 0)) then
-			lrl_popupText = { "", "Landing Rate v2.0 (ALx)", "Based on Dan Berry v1.83" }
+			lrl_popupText = { "", "Landing Rate v4.2 (ALx)", "Based on Dan Berry v1.83" }
 		elseif (lrl_landingRate ~= nil and lrl_landingRate <= 0) then
 			lrl_populatePopupStats()
 		end
