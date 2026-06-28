@@ -1,8 +1,22 @@
 -- ============================================================
 --  xp12_incidents_v3.lua
---  Custom Failure & Incident System for X-Plane 12  —  V 3.0
---  Aircraft: SimCoders B58 REP
+--  Custom Failure & Incident System for X-Plane 12  —  V 3.1
+--  Aircraft: Laminar Research standard aircraft (C172, SR22, …)
 --  Requires: FlyWithLua NG+
+--
+--  V3.1 changes over V3.0:
+--    - GEN0_HI / GEN1_HI: overvoltage damage cascade (section [2c]).
+--      Avionics (tier 1/2, gated avionics_on) and lights (tier 3,
+--      individual switch DataRef) fail with quadratically increasing
+--      probability over time.  Generator off → cascade stops.
+--      New command: FlyWithLua/Incidents/overvolt_test
+--        toggles 80%-per-minute test mode (active independently of
+--        overvolt state so it can be armed before triggering).
+--    - Renamed: fuelcap_routine.side "L"/"R" → 1/2
+--    - Renamed: incidents_culprit_tick split →
+--        incidents_state_tick  (fuel/preflight/overvolt)
+--        incidents_culprit_tick (smoke only)
+--    - Various internal renames for consistency (see CLAUDE.md)
 --
 --  V3 additions over V2:
 --    - FUEL_CAP:  virtual drain routine, one side, high→decreasing
@@ -61,10 +75,19 @@ local _ref_gen_on    = XPLMFindDataRef("sim/cockpit/electrical/generator_on")
 local _ref_volts     = XPLMFindDataRef("sim/cockpit2/electrical/bus_volts")
 local _ref_gspeed    = XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 local _ref_view_ext  = XPLMFindDataRef("sim/graphics/view/view_is_external")
+local _ref_sim_day   = XPLMFindDataRef("sim/time/local_date_days")  -- day of year, 0=Jan 1
 
 -- ---- Fuel DataRefs (scalar, confirmed working per fuel_leak_test) ----
-local _ref_fuel_l = XPLMFindDataRef("sim/flightmodel/weight/m_fuel1")   -- left  tank
-local _ref_fuel_r = XPLMFindDataRef("sim/flightmodel/weight/m_fuel2")   -- right tank
+local _ref_fuel = {
+    [1] = XPLMFindDataRef("sim/flightmodel/weight/m_fuel1"),   -- tank 1
+    [2] = XPLMFindDataRef("sim/flightmodel/weight/m_fuel2"),   -- tank 2
+}
+
+-- ---- Battery charge DataRefs -------------------------------
+-- battery_charge_watt_hr is float[8], writable; index 0 = main battery.
+-- battery_watt_hr_max is the per-battery full capacity (read-only).
+local _ref_bat_wh     = XPLMFindDataRef("sim/cockpit/electrical/battery_charge_watt_hr")
+local _ref_bat_wh_max = XPLMFindDataRef("sim/aircraft/electrical/battery_watt_hr_max")
 
 -- ---- Door DataRef (int[20], writable, index 0=pilot door, 1=copilot) ----
 local _ref_door_sw = XPLMFindDataRef("sim/cockpit2/switches/door_open")
@@ -80,16 +103,27 @@ local function write_door(n, val)
     pcall(XPLMSetDatavi, _ref_door_sw, t, n - 1, 1)
 end
 
-local function read_fuel_l()
-    local ok, v = pcall(XPLMGetDataf, _ref_fuel_l)
+local function read_tank(n)
+    local ok, v = pcall(XPLMGetDataf, _ref_fuel[n])
     return (ok and type(v) == "number") and v or nil
 end
-local function read_fuel_r()
-    local ok, v = pcall(XPLMGetDataf, _ref_fuel_r)
-    return (ok and type(v) == "number") and v or nil
+local function write_tank(n, v) if _ref_fuel[n] then XPLMSetDataf(_ref_fuel[n], v) end end
+
+-- Battery charge (Wh) — main battery, array index 0
+local function read_bat_wh()
+    if not _ref_bat_wh then return nil end
+    local ok, v = pcall(XPLMGetDatavf, _ref_bat_wh, 0, 1)
+    return (ok and v and v[0]) or nil
 end
-local function write_fuel_l(v) if _ref_fuel_l then XPLMSetDataf(_ref_fuel_l, v) end end
-local function write_fuel_r(v) if _ref_fuel_r then XPLMSetDataf(_ref_fuel_r, v) end end
+local function write_bat_wh(val)
+    if not _ref_bat_wh then return end
+    pcall(XPLMSetDatavf, _ref_bat_wh, {[0] = val}, 0, 1)
+end
+local function read_bat_wh_max()
+    if not _ref_bat_wh_max then return nil end
+    local ok, v = pcall(XPLMGetDataf, _ref_bat_wh_max)
+    return (ok and type(v) == "number" and v > 0) and v or nil
+end
 
 -- ---- Flight condition helpers ------------------------------
 local function airborne()
@@ -147,12 +181,26 @@ local fuel_drain_last = 0
 -- Door routine state table; assigned in [2b], referenced in save/load_memory.
 local door_routine
 
+-- Overvolt routine state table; assigned in [2c].
+local overvolt_routine
+local overvolt_last = 0
+
 -- Fuel cap preflight check state
 local fuel_cap_check_done   = false  -- true: external-view check done, FUEL_CAP blocked
 local fuel_drain_check_done = false  -- true: drain command done in ext view, FUEL_WATER blocked
+local fuel_drain_check_day = nil   -- sim day (local_date_days) when drain check was performed; nil = not done
 local fuel_type_pending     = false  -- true: refueling detected, FUEL_TYPE can trigger while on ground
-local fuel_cap_mem_l        = nil    -- last engine-off T1 qty (kg) — loaded from memory
-local fuel_cap_mem_r        = nil    -- last engine-off T2 qty (kg) — loaded from memory
+-- Battery charge persistence
+local BAT_LOW_PCT      = 0.25   -- below this fraction of max → "BAT: LOW" warning
+local BAT_RECHARGE_PCT = 0.80   -- "Recharge Bat" command target
+local BAT_RESET_JUMP   = 50     -- Wh: live-vs-snapshot jump above this = X-Plane flight reset
+local BAT_SAVE_CHUNK   = 20     -- Wh: persist follow-charge only every this many Wh
+local bat_snap         = nil    -- last engine-off battery charge (Wh) — loaded from memory
+local bat_saved        = nil    -- last persisted bat_snap, for save throttling
+local bat_low          = false  -- live flag for status display
+
+local fuel_snap_1           = nil    -- last engine-off T1 qty (kg) — loaded from memory
+local fuel_snap_2           = nil    -- last engine-off T2 qty (kg) — loaded from memory
 local engine_prev_on        = false  -- for engine-off edge detection
 
 -- ---- Smoke on-fix callback ---------------------------------
@@ -267,6 +315,10 @@ local function build_active_profile()
             end
         end
     end
+    cfg.overvolt_blocked = {}
+    for k, v in pairs(cfg.active_failures) do
+        if v.mtbf == "OFF" then cfg.overvolt_blocked[k] = true end
+    end
 end
 
 local function prob_from_mtbf(mtbf_hours, interval_sec)
@@ -337,22 +389,28 @@ save_memory = function()
         file:write("SMOKE_CULPRIT = " .. smoke_culprit .. "\n")
     end
 
-    -- fuel cap preflight check quantities (engine-off snapshot)
-    if fuel_cap_mem_l then
-        file:write(string.format("FUEL_CAP_T1 = %.2f\n", fuel_cap_mem_l))
+    -- engine-off tank snapshot (used by fuel cap / water / type checks)
+    if fuel_snap_1 then
+        file:write(string.format("TANK1_KG = %.2f\n", fuel_snap_1))
     end
-    if fuel_cap_mem_r then
-        file:write(string.format("FUEL_CAP_T2 = %.2f\n", fuel_cap_mem_r))
+    if fuel_snap_2 then
+        file:write(string.format("TANK2_KG = %.2f\n", fuel_snap_2))
     end
-    if fuel_drain_check_done then file:write("FUEL_DRAIN_CHECK = done\n") end
+
+    -- engine-off battery charge snapshot (Wh)
+    if bat_snap then
+        file:write(string.format("BAT_WH = %.2f\n", bat_snap))
+        bat_saved = bat_snap
+    end
+    if fuel_drain_check_day then file:write(string.format("FUEL_DRAIN_SIM_DAY = %d\n", fuel_drain_check_day)) end
     if fuel_type_pending     then file:write("FUEL_TYPE_PENDING = pending\n") end
 
-    -- fuel leak routine state: 1=left, 2=right, 3=both
+    -- fuel leak routine state: 1=T1, 2=T2, 3=both
     if fuelleak_routine then
         local lv = 0
-        if     fuelleak_routine.active_l and fuelleak_routine.active_r then lv = 3
-        elseif fuelleak_routine.active_l                               then lv = 1
-        elseif fuelleak_routine.active_r                               then lv = 2
+        if     fuelleak_routine.active_1 and fuelleak_routine.active_2 then lv = 3
+        elseif fuelleak_routine.active_1                               then lv = 1
+        elseif fuelleak_routine.active_2                               then lv = 2
         end
         if lv > 0 then
             file:write("FUEL_LEAK = " .. lv .. "\n")
@@ -397,20 +455,28 @@ local function load_memory()
                         smoke_prev_bat   = dr_bat_on
                         smoke_prev_avion = dr_avion
                         smoke_prev_gen   = read_gen_on()
-                    elseif key == "FUEL_CAP_T1" then
-                        fuel_cap_mem_l = tonumber(val)
-                    elseif key == "FUEL_CAP_T2" then
-                        fuel_cap_mem_r = tonumber(val)
-                    elseif key == "FUEL_DRAIN_CHECK" and val == "done" then
-                        fuel_drain_check_done = true
+                    elseif key == "BAT_WH" then
+                        bat_snap  = tonumber(val)
+                        bat_saved = bat_snap
+                    elseif key == "TANK1_KG" then
+                        fuel_snap_1 = tonumber(val)
+                    elseif key == "TANK2_KG" then
+                        fuel_snap_2 = tonumber(val)
+                    elseif key == "FUEL_DRAIN_SIM_DAY" then
+                        local t = tonumber(val)
+                        if t then
+                            fuel_drain_check_day  = t
+                            fuel_drain_check_done = true
+                            -- expiry evaluated in the on-ground loop after load
+                        end
                     elseif key == "FUEL_TYPE_PENDING" and val == "pending" then
                         fuel_type_pending = true
                     elseif key == "FUEL_LEAK" and fuelleak_routine then
-                        -- restore fuel leak routine (1=L, 2=R, 3=both)
+                        -- restore fuel leak routine (1=T1, 2=T2, 3=both)
                         local lv = tonumber(val)
                         if lv and lv >= 1 and lv <= 3 then
-                            fuelleak_routine.active_l = (lv == 1 or lv == 3)
-                            fuelleak_routine.active_r = (lv == 2 or lv == 3)
+                            fuelleak_routine.active_1 = (lv == 1 or lv == 3)
+                            fuelleak_routine.active_2 = (lv == 2 or lv == 3)
                             fuelleak_routine.elapsed  = 0
                             fuel_drain_last           = os.clock()
                         end
@@ -445,22 +511,21 @@ end
 --   snapshot present, no refueling  →  check still valid
 --   no snapshot (first start)  →  save baseline, check invalid
 local function fuel_cap_evaluate_check()
-    local live_l = read_fuel_l()
-    local live_r = read_fuel_r()
-    if fuel_cap_mem_l == nil or fuel_cap_mem_r == nil then
+    local live_1 = read_tank(1)
+    local live_2 = read_tank(2)
+    if fuel_snap_1 == nil or fuel_snap_2 == nil then
         -- first start: no snapshot yet — save current as baseline
         fuel_cap_check_done = false
-        fuel_cap_mem_l = live_l
-        fuel_cap_mem_r = live_r
+        fuel_snap_1 = live_1
+        fuel_snap_2 = live_2
         save_memory()
-    elseif (live_l and live_l > fuel_cap_mem_l + 1.0)
-        or (live_r and live_r > fuel_cap_mem_r + 1.0) then
-        -- refueling detected: invalidate checks, set fuel type pending
+    elseif (live_1 and live_1 > fuel_snap_1 + 1.0)
+        or (live_2 and live_2 > fuel_snap_2 + 1.0) then
+        -- refueling detected: invalidate cap check, set fuel type pending
         fuel_cap_check_done   = false
-        fuel_drain_check_done = false
         fuel_type_pending     = true
-        fuel_cap_mem_l = live_l
-        fuel_cap_mem_r = live_r
+        fuel_snap_1 = live_1
+        fuel_snap_2 = live_2
         save_memory()
     else
         -- no refueling since last engine-off: check remains valid
@@ -482,13 +547,13 @@ local FUEL_STOP_KG = 0.5   -- both routines stop draining at this level
 -- State tables (forward-declared in [1])
 fuelcap_routine = {
     active  = false,
-    side    = nil,    -- "L" or "R"
+    side    = nil,    -- 1 or 2
     elapsed = 0,      -- seconds since activation
 }
 
 fuelleak_routine = {
-    active_l = false,
-    active_r = false,
+    active_1 = false,
+    active_2 = false,
     elapsed  = 0,
 }
 
@@ -519,17 +584,17 @@ local function stop_fuel_cap()
     fuelcap_routine.elapsed = 0
 end
 
-local function start_fuel_leak(active_l, active_r)
-    fuelleak_routine.active_l = active_l
-    fuelleak_routine.active_r = active_r
+local function start_fuel_leak(active_1, active_2)
+    fuelleak_routine.active_1 = active_1
+    fuelleak_routine.active_2 = active_2
     fuelleak_routine.elapsed  = 0
     fuel_drain_last           = os.clock()
     save_memory()
 end
 
 local function stop_fuel_leak()
-    fuelleak_routine.active_l = false
-    fuelleak_routine.active_r = false
+    fuelleak_routine.active_1 = false
+    fuelleak_routine.active_2 = false
     fuelleak_routine.elapsed  = 0
     save_memory()
 end
@@ -538,7 +603,7 @@ end
 -- Runs do_often (~10×/s). Both routines share the same dt calculation.
 function incidents_fuel_tick()
     local any = fuelcap_routine.active
-                or fuelleak_routine.active_l or fuelleak_routine.active_r
+                or fuelleak_routine.active_1 or fuelleak_routine.active_2
     if not any then return end
 
     local now = os.clock()
@@ -549,55 +614,44 @@ function incidents_fuel_tick()
     if fuelcap_routine.active then
         fuelcap_routine.elapsed = fuelcap_routine.elapsed + dt
         local drain = fuelcap_rate(fuelcap_routine.elapsed) * dt
-        if fuelcap_routine.side == "L" then
-            local cur = read_fuel_l()
-            if cur then
-                if cur <= FUEL_STOP_KG then
-                    stop_fuel_cap()
-                else
-                    write_fuel_l(math.max(FUEL_STOP_KG, cur - drain))
-                end
-            end
-        else
-            local cur = read_fuel_r()
-            if cur then
-                if cur <= FUEL_STOP_KG then
-                    stop_fuel_cap()
-                else
-                    write_fuel_r(math.max(FUEL_STOP_KG, cur - drain))
-                end
+        local cur = read_tank(fuelcap_routine.side)
+        if cur then
+            if cur <= FUEL_STOP_KG then
+                stop_fuel_cap()
+            else
+                write_tank(fuelcap_routine.side, math.max(FUEL_STOP_KG, cur - drain))
             end
         end
     end
 
     -- Fuel Leak routine
-    if fuelleak_routine.active_l or fuelleak_routine.active_r then
+    if fuelleak_routine.active_1 or fuelleak_routine.active_2 then
         fuelleak_routine.elapsed = fuelleak_routine.elapsed + dt
         local drain = fuelleak_rate(fuelleak_routine.elapsed) * dt
 
-        if fuelleak_routine.active_l then
-            local cur = read_fuel_l()
+        if fuelleak_routine.active_1 then
+            local cur = read_tank(1)
             if cur then
                 if cur <= FUEL_STOP_KG then
-                    fuelleak_routine.active_l = false
+                    fuelleak_routine.active_1 = false
                 else
-                    write_fuel_l(math.max(FUEL_STOP_KG, cur - drain))
+                    write_tank(1, math.max(FUEL_STOP_KG, cur - drain))
                 end
             end
         end
-        if fuelleak_routine.active_r then
-            local cur = read_fuel_r()
+        if fuelleak_routine.active_2 then
+            local cur = read_tank(2)
             if cur then
                 if cur <= FUEL_STOP_KG then
-                    fuelleak_routine.active_r = false
+                    fuelleak_routine.active_2 = false
                 else
-                    write_fuel_r(math.max(FUEL_STOP_KG, cur - drain))
+                    write_tank(2, math.max(FUEL_STOP_KG, cur - drain))
                 end
             end
         end
 
         -- both sides drained to stop → clear memory
-        if not fuelleak_routine.active_l and not fuelleak_routine.active_r then
+        if not fuelleak_routine.active_1 and not fuelleak_routine.active_2 then
             save_memory()
         end
     end
@@ -732,6 +786,139 @@ do_often("incidents_door_tick()")
 
 
 -- ============================================================
+--  [2c] OVERVOLT ROUTINE
+--  Triggered by GEN0_HI / GEN1_HI failure.
+--  Bus rises to ~31V.  Avionics (tier 1/2) gated on avionics_on;
+--  lights (tier 3) gated on individual switch DataRefs.
+--  Failure probability increases quadratically with exposure time:
+--    p_per_tick = C × elapsed × dt
+--  This gives a Rayleigh-style survival curve — early exposures are
+--  safe, late ones almost certain.
+--  Test mode: flat 80%/min constant rate for all tiers.
+--  Cascade stops when the triggering generator is turned off.
+-- ============================================================
+
+-- Tier probability constants (see survival formula above)
+-- Tier 1: ~80% dead at 60 min   Tier 2: ~48%   Tier 3: ~73%
+local OV_C1        = 2.5e-7
+local OV_C2        = 1.0e-7
+local OV_C3        = 2.0e-7
+local OV_TEST_RATE = 0.0265   -- flat p/s → ~80% dead per 60 s
+local GEN_AVION_P  = 0.25     -- prob of one Tier-1 failure per gen transition with avionics on
+
+local gen_prev = {}           -- [0]/[1] = last known generator state per side
+
+overvolt_routine = {
+    active  = false,
+    side    = nil,    -- 0 or 1 (generator index, 0-based)
+    elapsed = 0,      -- seconds under overvoltage
+    test    = false,  -- test mode: flat 80%/min
+}
+
+-- Device pool — tier drives the probability constant used
+local overvolt_devices = {
+    -- Tier 1: sensitive digital avionics
+    { key="G_PFD",        tier=1 },
+    { key="G_MFD",        tier=1 },
+    { key="G_GIA1",       tier=1 },
+    { key="G_GIA2",       tier=1 },
+    { key="G_GEA",        tier=1 },
+    { key="ADR1",         tier=1 },
+    { key="ADR2",         tier=1 },
+    { key="AHRS1",        tier=1 },
+    { key="AHRS2",        tier=1 },
+    { key="MAGNETOMETER", tier=1 },
+    { key="G_ASI",        tier=1 },
+    { key="G_ALT",        tier=1 },
+    { key="G_VVI",        tier=1 },
+    { key="G430_GPS1",    tier=1 },
+    { key="G430_GPS2",    tier=1 },
+    { key="AP_COMPUTER",  tier=1 },
+    { key="NAVCOM1",      tier=1 },
+    { key="NAVCOM2",      tier=1 },
+    -- Tier 2: com/nav and EIS (more robust PSU, lower C)
+    { key="XPNDR",        tier=2 },
+    { key="DME",          tier=2 },
+    { key="ADF1",         tier=2 },
+    { key="MARKER",       tier=2 },
+    { key="WXR_RADAR",    tier=2 },
+    { key="RPM_IND_1",    tier=2 },
+    { key="RPM_IND_2",    tier=2 },
+    { key="MP_IND_1",     tier=2 },
+    { key="MP_IND_2",     tier=2 },
+    { key="CHT_IND_1",    tier=2 },
+    { key="CHT_IND_2",    tier=2 },
+    { key="EGT_IND_1",    tier=2 },
+    { key="EGT_IND_2",    tier=2 },
+    { key="FF_IND_1",     tier=2 },
+    { key="FF_IND_2",     tier=2 },
+    { key="FUEL_P_IND_1", tier=2 },
+    { key="FUEL_P_IND_2", tier=2 },
+    { key="OIL_P_IND_1",  tier=2 },
+    { key="OIL_P_IND_2",  tier=2 },
+    { key="OIL_T_IND_1",  tier=2 },
+    { key="OIL_T_IND_2",  tier=2 },
+    { key="BATTERY_1",    tier=2 },
+    -- Tier 3: lights — individually gated on switch DataRef
+    { key="LITES_BEACON",  tier=3 },
+    { key="LITES_NAV",     tier=3 },
+    { key="LITES_STROBE",  tier=3 },
+    { key="LITES_TAXI",    tier=3 },
+    { key="LITES_LANDING", tier=3 },
+    { key="LITES_INST",    tier=3 },
+    { key="LITES_COCKPIT", tier=3 },
+}
+
+-- Light "is on" DataRef map — cached refs filled by init_overvolt_refs()
+local overvolt_lite_refs = {
+    LITES_BEACON  = { path="sim/cockpit/electrical/beacon_lights_on",     float=false },
+    LITES_NAV     = { path="sim/cockpit/electrical/nav_lights_on",        float=false },
+    LITES_STROBE  = { path="sim/cockpit/electrical/strobe_lights_on",     float=false },
+    LITES_TAXI    = { path="sim/cockpit/electrical/taxi_light_on",        float=false },
+    LITES_LANDING = { path="sim/cockpit/electrical/landing_lights_on",    float=false },
+    LITES_INST    = { path="sim/cockpit/electrical/instrument_brightness", float=true  },
+    LITES_COCKPIT = { path="sim/cockpit/electrical/cockpit_lights",       float=true  },
+}
+
+local function init_overvolt_refs()
+    for _, entry in pairs(overvolt_lite_refs) do
+        entry.ref = XPLMFindDataRef(entry.path)
+    end
+end
+
+local function overvolt_lite_on(key)
+    local e = overvolt_lite_refs[key]
+    if not e or not e.ref then return false end
+    if e.float then
+        local ok, v = pcall(XPLMGetDataf, e.ref)
+        return ok and (v or 0) > 0
+    else
+        local ok, v = pcall(XPLMGetDatai, e.ref)
+        return ok and v == 1
+    end
+end
+
+local function read_gen_side(side)   -- side = 0 or 1
+    if not _ref_gen_on then return 0 end
+    local v = XPLMGetDatavi(_ref_gen_on, side, 1)
+    return (v and v[side]) or 0
+end
+
+local function start_overvolt(side)
+    overvolt_routine.active  = true
+    overvolt_routine.side    = side
+    overvolt_routine.elapsed = 0
+end
+
+local function stop_overvolt()
+    overvolt_routine.active  = false
+    overvolt_routine.side    = nil
+    overvolt_routine.elapsed = 0
+    overvolt_routine.test    = false
+end
+
+
+-- ============================================================
 --  [3] FAILURES
 -- ============================================================
 
@@ -795,17 +982,13 @@ def("ELE_FUEL_PMP_1", "sim/operation/failures/rel_ele_fuepmp0",      "EleFuelPmp
 def("ELE_FUEL_PMP_2", "sim/operation/failures/rel_ele_fuepmp1",      "EleFuelPmp 2", nil)
 def("FUEL_FLOW_1",    "sim/operation/failures/rel_fuelfl0",          "Fuel Flow 1",  nil)
 def("FUEL_FLOW_2",    "sim/operation/failures/rel_fuelfl1",          "Fuel Flow 2",  nil)
-def("FUEL_BLOCK_1",   "sim/operation/failures/rel_fuel_block0",      "Fuel Blk 1",   nil)
-def("FUEL_BLOCK_2",   "sim/operation/failures/rel_fuel_block1",      "Fuel Blk 2",   nil)
 def("FUEL_LEAK",   "sim/operation/failures/rel_fuel_leak",  "Fuel Leak", "engine")
 def("OIL_PUMP_1",     "sim/operation/failures/rel_oilpmp0",          "Oil Pump 1",   nil)
 def("OIL_PUMP_2",     "sim/operation/failures/rel_oilpmp1",          "Oil Pump 2",   nil)
-def("OIL_PRESS_LO_1", "sim/operation/failures/rel_eng_lo0",          "OilPressLo 1", nil)
-def("OIL_PRESS_LO_2", "sim/operation/failures/rel_eng_lo1",          "OilPressLo 2", nil)
 def("AIRFLOW_ENG1",   "sim/operation/failures/rel_airres0",          "Airflow Eng1", nil)
 def("AIRFLOW_ENG2",   "sim/operation/failures/rel_airres1",          "Airflow Eng2", nil)
 
--- ---- PROPELLERS --------------------------------------------
+-- ---- PROPELLERS (constant speed prop only) -------------------------
 def("PROP_FINE_1",    "sim/operation/failures/rel_prpfin0",          "Prop Fine 1",  nil)
 def("PROP_FINE_2",    "sim/operation/failures/rel_prpfin1",          "Prop Fine 2",  nil)
 def("PROP_COARSE_1",  "sim/operation/failures/rel_prpcrs0",          "PropCoarse 1", nil)
@@ -822,10 +1005,13 @@ def("GEN0_LO",        "sim/operation/failures/rel_gen0_lo",          "Gen0 V Low
 def("GEN0_HI",        "sim/operation/failures/rel_gen0_hi",          "Gen0 V High",  nil)
 def("GEN1_LO",        "sim/operation/failures/rel_gen1_lo",          "Gen1 V Low",   nil)
 def("GEN1_HI",        "sim/operation/failures/rel_gen1_hi",          "Gen1 V High",  nil)
-def("BAT0_LO",        "sim/operation/failures/rel_bat0_lo",          "Bat0 V Low",   nil)
-def("BAT0_HI",        "sim/operation/failures/rel_bat0_hi",          "Bat0 V High",  nil)
-def("BAT1_LO",        "sim/operation/failures/rel_bat1_lo",          "Bat1 V Low",   nil)
-def("BAT1_HI",        "sim/operation/failures/rel_bat1_hi",          "Bat1 V High",  nil)
+-- BAT*_LO removed: native rel_bat*_lo overrides voltage to 23V (useless —
+-- everything still works, and at true 20V it would even RAISE bus voltage).
+-- Battery depletion is handled by the watt-hr persistence logic instead.
+-- BAT*_HI removed: forces bus to 31V regardless of actual watt-hr state,
+-- so devices keep running even with Wh=0. Broken simulation behaviour.
+-- Battery physical damage from overvoltage is covered by BATTERY_1 in the
+-- GEN_HI overvoltage cascade (Tier 2).
 
 -- ---- LIGHTS ------------------------------------------------
 def("LITES_BEACON",   "sim/operation/failures/rel_lites_beac",       "Beacon",       nil)
@@ -867,8 +1053,6 @@ def("ALT_COPILOT",    "sim/operation/failures/rel_cop_alt",          "ALT Copilo
 def("AHZ_COPILOT",    "sim/operation/failures/rel_cop_ahz",          "AHZ Copilot",  nil)
 def("G430_GPS1",      "sim/operation/failures/rel_g430_gps1",        "G430 GPS 1",   nil)
 def("G430_GPS2",      "sim/operation/failures/rel_g430_gps2",        "G430 GPS 2",   nil)
-def("G430_NAV1",      "sim/operation/failures/rel_g430_rad1_tune",   "G430 Nav 1",   nil)
-def("G430_NAV2",      "sim/operation/failures/rel_g430_rad2_tune",   "G430 Nav 2",   nil)
 def("G_ASI",          "sim/operation/failures/rel_g_asi",            "G-ASI",        nil)
 def("G_ALT",          "sim/operation/failures/rel_g_alt",            "G-ALT",        nil)
 def("G_VVI",          "sim/operation/failures/rel_g_vvi",            "G-VVI",        nil)
@@ -877,6 +1061,10 @@ def("G_MFD",          "sim/operation/failures/rel_g_mfd",            "MFD",     
 def("G_GIA1",         "sim/operation/failures/rel_g_gia1",           "GIA 1",        nil)
 def("G_GIA2",         "sim/operation/failures/rel_g_gia2",           "GIA 2",        nil)
 def("G_GEA",          "sim/operation/failures/rel_g_gea",            "GEA",          nil)
+def("ADR1",           "sim/operation/failures/rel_adc_comp",         "ADR 1",        nil)
+def("ADR2",           "sim/operation/failures/rel_adc_comp_2",       "ADR 2",        nil)
+def("AHRS1",          "sim/operation/failures/rel_g_arthorz",        "AHRS 1",       nil)
+def("AHRS2",          "sim/operation/failures/rel_g_arthorz_2",      "AHRS 2",       nil)
 def("MAGNETOMETER",   "sim/operation/failures/rel_g_magmtr",         "Magnetomtr",   nil)
 def("WXR_RADAR",      "sim/operation/failures/rel_wxr_radar",        "WX Radar",     nil)
 def("NAVCOM1",        "sim/operation/failures/rel_navcom1",           "NavCom 1",     nil)
@@ -903,6 +1091,7 @@ def("OIL_T_IND_1",    "sim/operation/failures/rel_oilt_ind_0",       "OilT Ind 1
 def("OIL_T_IND_2",    "sim/operation/failures/rel_oilt_ind_1",       "OilT Ind 2",   nil)
 def("STALL_WARN",     "sim/operation/failures/rel_stall_warn",       "Stall Warn",   nil)
 def("GEAR_WARN",      "sim/operation/failures/rel_gear_warning",     "Gear Warn",    nil)
+def("PROP_SYNC",      "sim/operation/failures/rel_prop_sync",        "Prop Sync",    nil)
 
 -- ---- SENSORS / ANTENNAS  -----------------------------------------------
 def("PITOT",          "sim/operation/failures/rel_pitot",            "Pitot",        nil)
@@ -919,6 +1108,12 @@ def("FUEL_QTY",       "sim/operation/failures/rel_g_fuel",           "Fuel Qty",
 def("LOC",            "sim/operation/failures/rel_loc",              "LOC",          nil)
 def("GLS",            "sim/operation/failures/rel_gls",              "Glide Slope",  nil)
 def("GPS",            "sim/operation/failures/rel_gps",              "GPS",          nil)
+def("COM1",           "sim/operation/failures/rel_com1",             "COM 1",        nil)
+def("COM2",           "sim/operation/failures/rel_com2",             "COM 2",        nil)
+def("NAV1",           "sim/operation/failures/rel_nav1",             "NAV 1",        nil, nil, nil,
+    { followup = { { key="NAV2", prob=1.0 } } })
+def("NAV2",           "sim/operation/failures/rel_nav2",             "NAV 2",        nil, nil, nil,
+    { followup = { { key="NAV1", prob=1.0 } } })
 
 -- ---- GEAR --------------------------------------------------
 def("GEAR_IND",       "sim/operation/failures/rel_gear_ind",         "Gear Ind",     nil)
@@ -1008,7 +1203,7 @@ end
 -- excluded from re-triggering while already running.
 local function failure_is_active(f)
     if f.key == "FUEL_CAP"  then return fuelcap_routine.active end
-    if f.key == "FUEL_LEAK" then return fuelleak_routine.active_l or fuelleak_routine.active_r end
+    if f.key == "FUEL_LEAK" then return fuelleak_routine.active_1 or fuelleak_routine.active_2 end
     if f.key == "DOOR_OPEN" then return door_routine.fail_1 or door_routine.fail_2 end
     if f.key == "DOOR_1"    then return door_routine.fail_1 end
     if f.key == "DOOR_2"    then return door_routine.fail_2 end
@@ -1019,19 +1214,19 @@ end
 local function trigger_failure(f)
     -- FUEL_CAP: start custom drain routine instead of setting DataRef=6
     if f.key == "FUEL_CAP" then
-        start_fuel_cap(math.random() < 0.5 and "L" or "R")
+        start_fuel_cap(math.random() < 0.5 and 1 or 2)
         return
     end
     -- FUEL_LEAK: random side determination, then custom drain routine
     -- 40% left only / 40% right only / 20% both (engine position)
     if f.key == "FUEL_LEAK" then
         local r = math.random()
-        local al, ar
-        if     r < 0.4 then al, ar = true,  false
-        elseif r < 0.8 then al, ar = false, true
-        else                al, ar = true,  true
+        local a1, a2
+        if     r < 0.4 then a1, a2 = true,  false
+        elseif r < 0.8 then a1, a2 = false, true
+        else                a1, a2 = true,  true
         end
-        start_fuel_leak(al, ar)
+        start_fuel_leak(a1, a2)
         return
     end
     -- DOOR_OPEN: dice roll; latch respected when conditions enforced, bypassed when off
@@ -1051,6 +1246,9 @@ local function trigger_failure(f)
     if f.key == "DOOR_2" then if conditions_enforced and door_routine.latched_2 then return end; start_door_open(2); return end
     set_dr(f, 6)
     save_memory()
+    -- GEN0_HI / GEN1_HI: start overvoltage damage cascade
+    if f.key == "GEN0_HI" then start_overvolt(0) end
+    if f.key == "GEN1_HI" then start_overvolt(1) end
     -- cascade followup (e.g. engine fire → smoke)
     if f.on_trigger and f.on_trigger.followup then
         for _, entry in ipairs(f.on_trigger.followup) do
@@ -1109,6 +1307,8 @@ local function reset_failure(f)
     end
     if get_dr(f) > 0 then
         set_dr(f, 0)
+        if f.key == "GEN0_HI" and overvolt_routine.side == 0 then stop_overvolt() end
+        if f.key == "GEN1_HI" and overvolt_routine.side == 1 then stop_overvolt() end
         save_memory()
     end
 end
@@ -1187,6 +1387,7 @@ function incidents_reset_profile()
     memory_enabled = false
     for _, f in ipairs(failures) do reset_failure(f) end
     smoke_culprit = nil
+    stop_overvolt()
     door_routine.latched_1 = false
     door_routine.latched_2 = false
     memory_enabled = was_enabled
@@ -1208,7 +1409,7 @@ create_command(
 function incidents_trigger_all()
     -- check fuel and door routine state in addition to DataRef values
     local any_active = fuelcap_routine.active
-                       or fuelleak_routine.active_l or fuelleak_routine.active_r
+                       or fuelleak_routine.active_1 or fuelleak_routine.active_2
                        or door_routine.open_1 or door_routine.open_2
     for _, f in ipairs(failures) do
         if get_dr(f) > 0 then any_active = true; break end
@@ -1243,12 +1444,20 @@ create_command(
 )
 
 function incidents_fuelcap_check()
-    fuel_cap_check_done = not fuel_cap_check_done
+    local new_state = not fuel_cap_check_done
+    fuel_cap_check_done   = new_state
+    fuel_drain_check_done = new_state
+    if new_state then
+        fuel_drain_check_day = _ref_sim_day and XPLMGetDatai(_ref_sim_day) or nil
+    else
+        fuel_drain_check_day = nil
+    end
+    save_memory()
 end
 
 create_command(
     "FlyWithLua/Incidents/fuelcap_check",
-    "Incidents: toggle fuel cap preflight check on/off",
+    "Incidents: toggle fuel cap and drain preflight checks on/off",
     "incidents_fuelcap_check()", "", ""
 )
 
@@ -1277,10 +1486,40 @@ create_command(
     "incidents_latch_all_doors()", "", ""
 )
 
+-- ---- Overvolt test mode ------------------------------------
+function incidents_overvolt_test()
+    overvolt_routine.test = not overvolt_routine.test
+end
+
+create_command(
+    "FlyWithLua/Incidents/overvolt_test",
+    "Incidents: toggle overvolt test mode (80%/min for all tiers)",
+    "incidents_overvolt_test()", "", ""
+)
+
+-- ---- Recharge battery -------------------------------------
+function incidents_recharge_bat()
+    local maxv = read_bat_wh_max()
+    if not maxv then return end
+    local target = maxv * BAT_RECHARGE_PCT
+    write_bat_wh(target)
+    bat_snap  = target
+    bat_low   = false
+    save_memory()
+    inc_trigger_popup("RECHARGED")
+end
+
+create_command(
+    "FlyWithLua/Incidents/recharge_bat",
+    "Incidents: recharge battery to 80%",
+    "incidents_recharge_bat()", "", ""
+)
+
 -- ---- Fuel drain preflight check ---------------------------
 function incidents_drain_fuel_tanks()
     if airborne() or engine_on() then return end
     if not (_ref_view_ext and XPLMGetDatai(_ref_view_ext) == 1) then return end
+    fuel_drain_check_day  = _ref_sim_day and XPLMGetDatai(_ref_sim_day) or nil
     fuel_drain_check_done = true
     local fw = find_failure("FUEL_WATER")
     if fw and failure_is_active(fw) then reset_failure(fw) end
@@ -1305,6 +1544,17 @@ create_command(
     "FlyWithLua/Incidents/toggle_conditions",
     "Incidents: toggle condition enforcement for manual toggles",
     "incidents_toggle_conditions()", "", ""
+)
+
+function incidents_toggle_threats()
+    threats_visible = not threats_visible
+    inc_trigger_popup(threats_visible and "THREATS: VISIBLE" or "THREATS: HIDDEN")
+end
+
+create_command(
+    "FlyWithLua/Incidents/toggle_threats",
+    "Incidents: show / hide threats and failures in status display",
+    "incidents_toggle_threats()", "", ""
 )
 
 -- ---- Per-failure toggle ------------------------------------
@@ -1338,6 +1588,7 @@ for _, f in ipairs(failures) do make_toggle(f) end
 -- ============================================================
 
 incidents_show_status = false
+threats_visible       = false   -- global: toggle function and draw both access this
 
 function incidents_draw_status()
     -- startup popup: defer timing to first draw frame
@@ -1410,69 +1661,101 @@ function incidents_draw_status()
 
     -- add fuel routine entries to active list
     local any_fuel = fuelcap_routine.active
-                     or fuelleak_routine.active_l or fuelleak_routine.active_r
+                     or fuelleak_routine.active_1 or fuelleak_routine.active_2
     if fuelcap_routine.active then
         local rate = fuelcap_rate(fuelcap_routine.elapsed)
-        table.insert(active, string.format("Cap %s: %.2f kg/s↓", fuelcap_routine.side, rate))
+        table.insert(active, string.format("Cap T%d: %.2f kg/s↓", fuelcap_routine.side, rate))
     end
-    if fuelleak_routine.active_l or fuelleak_routine.active_r then
+    if fuelleak_routine.active_1 or fuelleak_routine.active_2 then
         local sides
-        if   fuelleak_routine.active_l and fuelleak_routine.active_r then sides = "L+R"
-        elseif fuelleak_routine.active_l                             then sides = "L"
-        else                                                              sides = "R"
+        if   fuelleak_routine.active_1 and fuelleak_routine.active_2 then sides = "T1+T2"
+        elseif fuelleak_routine.active_1                             then sides = "T1"
+        else                                                              sides = "T2"
         end
         local rate = fuelleak_rate(fuelleak_routine.elapsed)
         table.insert(active, string.format("Leak %s: %.2f kg/s↑", sides, rate))
     end
 
 
-    -- green status entries (pre-computed for layout)
+    -- pre-compute visibility flags
     local show_cap_checked   = fuel_cap_check_done
     local show_drain_checked = fuel_drain_check_done
     local show_type_pending  = fuel_type_pending
-    local show_latch_1 = door_available(1) and door_routine.latched_1
-    local show_latch_2 = door_available(2) and door_routine.latched_2
+    local show_latch_1       = door_available(1) and door_routine.latched_1
+    local show_latch_2       = door_available(2) and door_routine.latched_2
+    local show_ov_test       = overvolt_routine.test   -- always shown when active, independent of threats_visible
 
-    -- layout: title + active failures + fuel quantities + green status lines
-    local extra_lines = (any_fuel and 1 or 0)
-                      + (show_cap_checked   and 1 or 0)
-                      + (show_drain_checked and 1 or 0)
-                      + (show_type_pending  and 1 or 0)
-                      + (show_latch_1 and 1 or 0)
-                      + (show_latch_2 and 1 or 0)
-    local top = y + 20 + (#active + extra_lines) * 20
+    -- line counts for height calculation
+    local guard_lines   = (show_cap_checked   and 1 or 0)
+                        + (show_drain_checked and 1 or 0)
+                        + (show_latch_1       and 1 or 0)
+                        + (show_latch_2       and 1 or 0)
+    local ov_line       = show_ov_test and 1 or 0
+    local threat_lines  = threats_visible and (
+                            #active
+                          + (any_fuel          and 1 or 0)
+                          + (show_type_pending and 1 or 0)
+                          + (bat_low           and 1 or 0)
+                        ) or 0
+    -- 3 fixed header lines + ov test (always) + guards always + threats conditional
+    local top = y + 20 + (2 + ov_line + guard_lines + threat_lines) * 20
     local cy  = top
 
+    -- line 1: script name
     graphics.set_color(1, 1, 1, 1)
-    local cond_str = conditions_enforced and "COND: ON" or "COND: OFF"
-    draw_string_Helvetica_18(x, cy, "[xp12 Incidents V3]  MODE: " .. mode_str .. "  PROFILE: " .. cfg.active_name .. "  " .. cond_str)
+    draw_string_Helvetica_18(x, cy, "xp12 Incidents   Status Display")
     cy = cy - 20
 
-    for _, label in ipairs(active) do
-        graphics.set_color(1, 0.2, 0.2, 1)
-        draw_string_Helvetica_18(x, cy, label .. ":   FAIL")
-        cy = cy - 20
-    end
+    -- line 2: mode + profile
+    graphics.set_color(1, 1, 1, 1)
+    draw_string_Helvetica_18(x, cy, "MODE: " .. mode_str .. "   PROFILE: " .. cfg.active_name)
+    cy = cy - 20
 
-    -- fuel tank quantities (shown when any fuel routine is active)
-    if any_fuel then
-        local t1 = read_fuel_l()
-        local t2 = read_fuel_r()
-        local fmt = function(v) return v and string.format("%.1f", v) or "?" end
-        graphics.set_color(1, 0.85, 0.2, 1)
-        draw_string_Helvetica_18(x, cy,
-            string.format("[Fuel]  T1: %s kg   T2: %s kg", fmt(t1), fmt(t2)))
-        cy = cy - 20
-    end
+    -- line 3: threats visibility + conditions
+    local cond_str = conditions_enforced and "COND: ON" or "COND: OFF"
+    graphics.set_color(1, 1, 1, 1)
+    draw_string_Helvetica_18(x, cy, (threats_visible and "THREATS: VISIBLE" or "THREATS: HIDDEN") .. "   " .. cond_str)
+    cy = cy - 20
 
-    -- orange warning: fuel type risk pending
-    if show_type_pending then
+    -- overvoltage test: always shown in orange when active, independent of threats_visible
+    if show_ov_test then
         graphics.set_color(1.0, 0.6, 0.1, 1)
-        draw_string_Helvetica_18(x, cy, "FUEL TYPE: PENDING")
+        draw_string_Helvetica_18(x, cy, "OVERVOLTAGE TEST MODE")
         cy = cy - 20
     end
 
-    -- green status lines
+    -- failures + threats (only when visible)
+    if threats_visible then
+        for _, label in ipairs(active) do
+            graphics.set_color(1, 0.2, 0.2, 1)
+            draw_string_Helvetica_18(x, cy, label .. ":   FAIL")
+            cy = cy - 20
+        end
+
+        if any_fuel then
+            local t1  = read_tank(1)
+            local t2  = read_tank(2)
+            local fmt = function(v) return v and string.format("%.1f", v) or "?" end
+            graphics.set_color(1, 0.85, 0.2, 1)
+            draw_string_Helvetica_18(x, cy,
+                string.format("[Fuel]  T1: %s kg   T2: %s kg", fmt(t1), fmt(t2)))
+            cy = cy - 20
+        end
+
+        if show_type_pending then
+            graphics.set_color(1.0, 0.6, 0.1, 1)
+            draw_string_Helvetica_18(x, cy, "FUEL TYPE: PENDING")
+            cy = cy - 20
+        end
+
+        if bat_low then
+            graphics.set_color(1.0, 0.6, 0.1, 1)
+            draw_string_Helvetica_18(x, cy, "BAT: LOW")
+            cy = cy - 20
+        end
+    end
+
+    -- guards (always visible)
     if show_cap_checked or show_drain_checked or show_latch_1 or show_latch_2 then
         graphics.set_color(0.3, 1.0, 0.3, 1)
         if show_cap_checked then
@@ -1605,29 +1888,110 @@ end
 
 do_sometimes("incidents_fix_tick()")
 
--- ---- Smoke culprit monitor ---------------------------------
-function incidents_culprit_tick()
+-- ---- Avionics-on generator transition damage ----------------
+-- Startup or shutdown with avionics master ON can spike the bus.
+-- 25% chance of one random Tier-1 failure per generator transition.
+-- Skipped if GEN_HI for that side is profile-OFF (e.g. B58).
+local function check_avion_gen_damage(side)
+    local hi_key = side == 0 and "GEN0_HI" or "GEN1_HI"
+    if cfg.overvolt_blocked[hi_key] then return end
+    if not dr_avion or dr_avion == 0 then return end
+    local p = overvolt_routine.test and 1.0 or GEN_AVION_P
+    if math.random() > p then return end
+    local eligible = {}
+    for _, dev in ipairs(overvolt_devices) do
+        if dev.tier == 1 then
+            local f = find_failure(dev.key)
+            if f and not cfg.overvolt_blocked[dev.key] and get_dr(f) ~= 6 then
+                table.insert(eligible, f)
+            end
+        end
+    end
+    if #eligible == 0 then return end
+    local victim = eligible[math.random(#eligible)]
+    set_dr(victim, 6)
+    save_memory()
+end
+
+-- ---- State monitor (engine/fuel/preflight checks) ----------
+function incidents_state_tick()
+    -- ---- Generator transition: avionics-on damage check ----------------
+    -- "generator producing" = switch ON AND engine running (per side).
+    -- Switch-only changes (e.g. flipping the switch with engine off) also count.
+    if _ref_gen_on and _ref_engn then
+        for _, side in ipairs({0, 1}) do
+            local vs        = XPLMGetDatavi(_ref_gen_on, side, 1)
+            local ve        = XPLMGetDatavi(_ref_engn,   side, 1)
+            local switch_on = (vs and vs[0]) or 0
+            local eng_run   = (ve and ve[0]) or 0
+            local gen_now   = (switch_on == 1 and eng_run == 1) and 1 or 0
+            if gen_prev[side] ~= nil and gen_prev[side] ~= gen_now then
+                check_avion_gen_damage(side)
+            end
+            gen_prev[side] = gen_now
+        end
+    end
+
     -- ---- Engine-off detection: save fuel snapshot for refuel detection ----
     local eng_now = engine_on()
     if engine_prev_on and not eng_now then
-        fuel_cap_mem_l = read_fuel_l()
-        fuel_cap_mem_r = read_fuel_r()
+        fuel_snap_1 = read_tank(1)
+        fuel_snap_2 = read_tank(2)
+        bat_snap    = read_bat_wh()
         save_memory()
     end
     engine_prev_on = eng_now
 
+    -- ---- Battery charge persistence ----------------------------------
+    -- X-Plane drains the battery natively but resets it to full each flight.
+    -- We persist the engine-off charge and restore it after the reset.
+    -- Distinguish reset (sudden jump to full) from legitimate charging
+    -- (gradual rise via ground power) by the size of the live-vs-snapshot gap.
+    do
+        local live = read_bat_wh()
+        local maxv = read_bat_wh_max()
+        if live then
+            -- write-back only when armed and parked (hands off when paused)
+            if bat_snap ~= nil and not airborne() and not eng_now and not system_paused then
+                local delta = live - bat_snap
+                if delta > BAT_RESET_JUMP then
+                    -- sudden jump = flight-init reset → restore saved charge
+                    write_bat_wh(bat_snap)
+                elseif delta > 0 then
+                    -- gradual rise = ground-power / native charging → follow it
+                    bat_snap = live
+                    if bat_saved == nil or math.abs(bat_snap - bat_saved) >= BAT_SAVE_CHUNK then
+                        save_memory()
+                    end
+                end
+            end
+            -- live low-battery flag for status display (informational, always)
+            if maxv then bat_low = (live < maxv * BAT_LOW_PCT) end
+        end
+    end
+
     -- ---- Refueling detection: continuous monitor while parked with engine off ----
-    if not airborne() and not eng_now and fuel_cap_mem_l ~= nil and fuel_cap_mem_r ~= nil then
-        local live_l = read_fuel_l()
-        local live_r = read_fuel_r()
-        if (live_l and live_l > fuel_cap_mem_l + 1.0)
-        or (live_r and live_r > fuel_cap_mem_r + 1.0) then
-            fuel_cap_check_done   = false
-            fuel_drain_check_done = false
-            fuel_type_pending     = true
-            fuel_cap_mem_l = live_l
-            fuel_cap_mem_r = live_r
+    if not airborne() and not eng_now and fuel_snap_1 ~= nil and fuel_snap_2 ~= nil then
+        local live_1 = read_tank(1)
+        local live_2 = read_tank(2)
+        if (live_1 and live_1 > fuel_snap_1 + 1.0)
+        or (live_2 and live_2 > fuel_snap_2 + 1.0) then
+            fuel_cap_check_done = false
+            fuel_type_pending   = true
+            fuel_snap_1 = live_1
+            fuel_snap_2 = live_2
             save_memory()
+        end
+        -- drain check expiry: invalidate if sim date has advanced by more than 1 day
+        if fuel_drain_check_done and fuel_drain_check_day and _ref_sim_day then
+            local cur_day = XPLMGetDatai(_ref_sim_day)
+            local diff    = cur_day - fuel_drain_check_day
+            if diff < 0 then diff = diff + 365 end  -- year wrap
+            if diff >= 1 then
+                fuel_drain_check_done = false
+                fuel_drain_check_day  = nil
+                save_memory()
+            end
         end
     end
 
@@ -1645,6 +2009,55 @@ function incidents_culprit_tick()
         inc_trigger_popup("TANK CAP CHECKED")
     end
 
+    -- ---- Overvolt damage cascade ----------------------------------------
+    local ov_now = os.clock()
+    local ov_dt  = math.min(ov_now - overvolt_last, 2.0)
+    overvolt_last = ov_now
+
+    if overvolt_routine.active then
+        -- cascade stops when the pilot turns off the triggering generator
+        if overvolt_routine.side ~= nil and read_gen_side(overvolt_routine.side) == 0 then
+            stop_overvolt()
+        else
+            overvolt_routine.elapsed = overvolt_routine.elapsed + ov_dt
+            local elapsed = overvolt_routine.elapsed
+            local avion   = (dr_avion == 1)
+
+            for _, dev in ipairs(overvolt_devices) do
+                local f = find_failure(dev.key)
+                if f and not cfg.overvolt_blocked[dev.key] and get_dr(f) ~= 6 then
+                    local powered = false
+                    if dev.tier == 1 or dev.tier == 2 then
+                        powered = avion
+                    else   -- tier 3: individual light switch
+                        powered = overvolt_lite_on(dev.key)
+                    end
+                    if powered then
+                        local p
+                        if overvolt_routine.test then
+                            p = OV_TEST_RATE * ov_dt
+                        elseif dev.tier == 1 then
+                            p = OV_C1 * elapsed * ov_dt
+                        elseif dev.tier == 2 then
+                            p = OV_C2 * elapsed * ov_dt
+                        else
+                            p = OV_C3 * elapsed * ov_dt
+                        end
+                        if math.random() < p then
+                            set_dr(f, 6)
+                            save_memory()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+do_sometimes("incidents_state_tick()")
+
+-- ---- Smoke culprit monitor ---------------------------------
+function incidents_culprit_tick()
     if system_paused then
         smoke_prev_bat   = dr_bat_on
         smoke_prev_avion = dr_avion
@@ -1687,10 +2100,15 @@ function incidents_aircraft_check()
     if current ~= "" and current ~= last_icao then
         last_icao = current
         build_active_profile()
-        fuel_cap_mem_l        = nil
-        fuel_cap_mem_r        = nil
+        fuel_snap_1           = nil
+        fuel_snap_2           = nil
+        bat_snap              = nil
+        bat_saved             = nil
+        bat_low               = false
         fuel_drain_check_done = false
+        fuel_drain_check_day = nil
         fuel_type_pending     = false
+        stop_overvolt()
         -- reset door routine for new aircraft; do_often tick reads actual sim state within ~100ms
         door_routine.open_1    = false
         door_routine.open_2    = false
@@ -1700,7 +2118,15 @@ function incidents_aircraft_check()
         door_routine.latched_2 = false
         door_routine.prev_1    = 0
         door_routine.prev_2    = 0
-        load_memory()   -- restores latches from profile section
+        load_memory()   -- restores latches and failure states from profile section
+        -- resume overvolt cascade if GEN_HI was restored from memory
+        do
+            local f0 = find_failure("GEN0_HI")
+            local f1 = find_failure("GEN1_HI")
+            if     f0 and get_dr(f0) == 6 then start_overvolt(0)
+            elseif f1 and get_dr(f1) == 6 then start_overvolt(1)
+            end
+        end
         fuel_cap_evaluate_check()
     end
 end
@@ -1710,6 +2136,7 @@ do_sometimes("incidents_aircraft_check()")
 -- ---- Bootstrap ---------------------------------------------
 load_config()
 init_refs()
+init_overvolt_refs()
 build_active_profile()
 
 for _, f in ipairs(failures) do

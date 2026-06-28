@@ -2,7 +2,6 @@
 
 ## Umgebung
 - Skriptsprache: Lua (FlyWithLua NG+ für X-Plane 12)
-- Zielflugzeug: SimCoders Baron 58 REP
 - Entwicklung auf macOS, Ausführung auf Windows (X-Plane 12)
 
 ## FlyWithLua: Globale vs. lokale Funktionen
@@ -13,7 +12,6 @@ FlyWithLua wertet diese Strings im globalen Scope aus — lokale Funktionen sind
 Betrifft alle Registrierungsfunktionen:
 - `do_sometimes("func()")`
 - `do_often("func()")`
-- `do_rarely("func()")`
 - `do_every_draw("func()")`
 - `create_command(..., "func()", ...)`
 - `add_macro(..., "code", "code", ...)`
@@ -41,7 +39,6 @@ Nur diese Registrierungsfunktionen existieren in FlyWithLua NG+:
 | `do_every_draw(s)` | Jeden Frame |
 | `do_often(s)` | ~10× pro Sekunde |
 | `do_sometimes(s)` | ~1× pro Sekunde |
-| ~~`do_rarely(s)`~~ | existiert nicht — stattdessen `do_sometimes` mit manuellem Throttle |
 | `do_on_keystroke(s)` | Bei Tastendruck |
 | `do_on_mouse_click(s)` | Bei Mausklick |
 | `create_command(name, desc, begin, cont, end)` | Command-Handler |
@@ -50,9 +47,8 @@ Nur diese Registrierungsfunktionen existieren in FlyWithLua NG+:
 **Nicht verwenden** (existiert nicht):
 - ~~`do_on_airport_load()`~~
 - ~~`do_on_new_flight()`~~
+| ~~`do_rarely(s)`~~ | existiert nicht — stattdessen `do_sometimes` mit manuellem Throttle |
 
 ## Projekt-Philosophie
-- Nur B58 REP als Zielflugzeug
-- Defensiv programmieren, kein Konflikt mit REP-internen Systemen
 - DataRefs nur zurücksetzen wenn sie auf den erwarteten Fehlerwert gesetzt sind
 - Schrittweise vorgehen, ein Modul nach dem anderen
