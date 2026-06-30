@@ -455,70 +455,48 @@ create_command(
 )
 
 ----------------------------
--- PITCH TRIM MULTIPLIER (5x, gleichmäßig)
+-- PITCH TRIM (Encoder: fester Schritt pro Raste)
 ----------------------------
 
--- Anzahl der Trim-Impulse pro Tastendruck. Bei Bedarf hier ändern.
-TOLISS_TRIM_PULSES_PER_EVENT = 5
-TOLISS_TRIM_PULSE_SEC = 0.05
+-- Trim-Betrag pro Encoder-Notch (= ein Command-Trigger).
+-- Größer = schneller/grober, kleiner = feiner. Das ist die einzige Stellschraube.
+--   ~0.003 = fein   |   ~0.005 = ausgewogen   |   ~0.010 = zügig
+-- elevator_trim läuft von -1 (nose down) bis +1 (nose up).
+TOLISS_TRIM_STEP = 0.005
 
-local toliss_trim_cmd_up = "sim/flight_controls/pitch_trim_up"
-local toliss_trim_cmd_dn = "sim/flight_controls/pitch_trim_down"
+local dr_elev_trim = nil
 
-local toliss_trim_active = false
-local toliss_trim_active_cmd = nil
-local toliss_trim_end_time = 0.0
-local toliss_trim_pulses_left = 0
-local toliss_trim_next_cmd = nil
-
-function toliss_trim_start_pulse(cmd)
-    toliss_trim_active = true
-    toliss_trim_active_cmd = cmd
-    toliss_trim_end_time = os.clock() + TOLISS_TRIM_PULSE_SEC
-    command_begin(cmd)
+function toliss_trim_init()
+    if not (XPLMFindDataRef and XPLMGetDataf and XPLMSetDataf) then return end
+    dr_elev_trim = XPLMFindDataRef("sim/cockpit2/controls/elevator_trim")
 end
 
-function toliss_trim_tick()
-    if toliss_trim_active and os.clock() >= toliss_trim_end_time then
-        command_end(toliss_trim_active_cmd)
-        toliss_trim_active = false
-        toliss_trim_active_cmd = nil
-
-        if toliss_trim_pulses_left > 0 then
-            toliss_trim_pulses_left = toliss_trim_pulses_left - 1
-            toliss_trim_start_pulse(toliss_trim_next_cmd)
-        end
-    end
+toliss_trim_init()
+if do_on_aircraft_load then
+    do_on_aircraft_load("toliss_trim_init()")
 end
 
-do_often("toliss_trim_tick()")
-
--- direction: >0 up, <0 down. Wird im "Hold"-Slot des Commands aufgerufen,
--- d.h. bei Dauerdruck wiederholt sich der Impulsblock laufend.
-function toliss_trim_multi(direction)
-    local cmd = (direction < 0) and toliss_trim_cmd_dn or toliss_trim_cmd_up
-
-    toliss_trim_next_cmd = cmd
-    toliss_trim_pulses_left = math.max(0, TOLISS_TRIM_PULSES_PER_EVENT - 1)
-
-    if not toliss_trim_active then
-        toliss_trim_start_pulse(cmd)
-    end
+-- direction: >0 = nose up, <0 = nose down. Ein Trigger = genau ein fester Schritt.
+function toliss_trim_step(direction)
+    if dr_elev_trim == nil or not (XPLMGetDataf and XPLMSetDataf) then return end
+    local v = XPLMGetDataf(dr_elev_trim) + direction * TOLISS_TRIM_STEP
+    if v > 1.0 then v = 1.0 elseif v < -1.0 then v = -1.0 end
+    XPLMSetDataf(dr_elev_trim, v)
 end
 
 create_command(
     "FlyWithLua/ToLiss/Pitch_trim_up_multi",
-    "Pitch trim up (emulated)",
+    "Pitch trim up (step)",
+    "toliss_trim_step(1)",
     "",
-    "toliss_trim_multi(1)",
     ""
 )
 
 create_command(
     "FlyWithLua/ToLiss/Pitch_trim_down_multi",
-    "Pitch trim down (emulated)",
+    "Pitch trim down (step)",
+    "toliss_trim_step(-1)",
     "",
-    "toliss_trim_multi(-1)",
     ""
 )
 
