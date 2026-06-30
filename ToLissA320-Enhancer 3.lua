@@ -455,34 +455,67 @@ create_command(
 )
 
 ----------------------------
--- PITCH TRIM (Encoder: fester Schritt pro Raste)
+-- PITCH TRIM (Encoder: kurzer gehaltener nativer Trim-Puls pro Raste)
 ----------------------------
 
--- Trim-Betrag pro Encoder-Notch (= ein Command-Trigger).
--- Größer = schneller/grober, kleiner = feiner. Das ist die einzige Stellschraube.
---   ~0.003 = fein   |   ~0.005 = ausgewogen   |   ~0.010 = zügig
--- elevator_trim läuft von -1 (nose down) bis +1 (nose up).
-TOLISS_TRIM_STEP = 0.005
+-- Hintergrund: Direktes Schreiben von elevator_trim wird vom ToLiss-FBW jeden
+-- Frame ueberschrieben (Rad "zittert"); einzeln getriggerte Commands greifen
+-- nicht. Zuverlaessig wirkt nur ein *gehaltener* nativer Command
+-- (command_begin .. command_end), getaktet ueber do_often -- exakt die Bausteine,
+-- die hier frueher schon funktioniert haben.
+--
+-- Jede Encoder-Raste haelt den nativen Trim-Command fuer eine feste Zeit gedrueckt.
+-- Ein Deckel begrenzt den Rueckstau -> nach dem Loslassen laeuft nichts nach.
+--
+-- EINZIGE Stellschraube: Staerke (Trimm-Menge pro Raste). Zu langsam => groesser,
+-- zu grob => kleiner.   1 ~ 0.1 Grad pro Raste, jede Stufe ~ +0.1 Grad.
+TOLISS_TRIM_STRENGTH = 1
 
-local dr_elev_trim = nil
+-- intern: Haltezeit je Staerkestufe in Sekunden (nicht anfassen)
+local TOLISS_TRIM_BASE_SEC = 0.05
 
-function toliss_trim_init()
-    if not (XPLMFindDataRef and XPLMGetDataf and XPLMSetDataf) then return end
-    dr_elev_trim = XPLMFindDataRef("sim/cockpit2/controls/elevator_trim")
-end
+local toliss_trim_cmd_up = "sim/flight_controls/pitch_trim_up"
+local toliss_trim_cmd_dn = "sim/flight_controls/pitch_trim_down"
 
-toliss_trim_init()
-if do_on_aircraft_load then
-    do_on_aircraft_load("toliss_trim_init()")
-end
+local toliss_trim_active_cmd = nil
+local toliss_trim_until = 0
 
--- direction: >0 = nose up, <0 = nose down. Ein Trigger = genau ein fester Schritt.
+-- direction: >0 = nose up, <0 = nose down. Eine Raste = ein Puls.
 function toliss_trim_step(direction)
-    if dr_elev_trim == nil or not (XPLMGetDataf and XPLMSetDataf) then return end
-    local v = XPLMGetDataf(dr_elev_trim) + direction * TOLISS_TRIM_STEP
-    if v > 1.0 then v = 1.0 elseif v < -1.0 then v = -1.0 end
-    XPLMSetDataf(dr_elev_trim, v)
+    local now = os.clock()
+    local cmd = (direction < 0) and toliss_trim_cmd_dn or toliss_trim_cmd_up
+    local pulse = TOLISS_TRIM_STRENGTH * TOLISS_TRIM_BASE_SEC
+
+    -- Richtungswechsel: laufenden Puls sofort beenden
+    if toliss_trim_active_cmd and toliss_trim_active_cmd ~= cmd then
+        command_end(toliss_trim_active_cmd)
+        toliss_trim_active_cmd = nil
+        toliss_trim_until = 0
+    end
+
+    -- An laufenden Puls anhaengen, sonst ab jetzt; Deckel = max. 2 Rasten Rueckstau
+    local base = (toliss_trim_active_cmd and toliss_trim_until > now) and toliss_trim_until or now
+    toliss_trim_until = math.min(base + pulse, now + pulse * 2)
+
+    if not toliss_trim_active_cmd then
+        toliss_trim_active_cmd = cmd
+        command_begin(cmd)
+    end
 end
+
+-- Beendet den gehaltenen Command, sobald die Pulszeit abgelaufen ist.
+function toliss_trim_tick()
+    if toliss_trim_active_cmd and os.clock() >= toliss_trim_until then
+        command_end(toliss_trim_active_cmd)
+        toliss_trim_active_cmd = nil
+        toliss_trim_until = 0
+    end
+end
+
+-- Pro Frame fuer praezise, kurze Pulse; do_often als Sicherheits-Backstop,
+-- falls do_every_frame in dieser FlyWithLua-Version nicht feuert.
+do_every_frame("toliss_trim_tick()")
+do_often("toliss_trim_tick()")
 
 create_command(
     "FlyWithLua/ToLiss/Pitch_trim_up_multi",
