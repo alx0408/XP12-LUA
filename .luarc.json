@@ -27,6 +27,7 @@
       "create_dataref",
       "find_dataref",
       "XPLMFindDataRef",
+      "XPLMGetDataRefTypes",
       "XPLMGetDataf",
       "XPLMSetDataf",
       "XPLMGetDatad",
