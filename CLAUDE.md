@@ -52,3 +52,13 @@ Nur diese Registrierungsfunktionen existieren in FlyWithLua NG+:
 ## Projekt-Philosophie
 - DataRefs nur zurücksetzen wenn sie auf den erwarteten Fehlerwert gesetzt sind
 - Schrittweise vorgehen, ein Modul nach dem anderen
+
+## Arbeitsweise (Tools & Nachfragen)
+Gilt für dieses gesamte Repo, in jeder Session.
+
+- **Dateien lesen/durchsuchen:** Read/Grep/Glob-Tools verwenden, NICHT `bash cat/grep/sed`. Die Dateien liegen im Repo — direkt darauf arbeiten (das fragt nicht nach).
+- **Bash nicht mit `cd "…" &&` einleiten.** Das Arbeitsverzeichnis ist bereits gesetzt; `cd` in einem zusammengesetzten Befehl löst unnötige Berechtigungs-Prompts aus. Direkt aufrufen oder absolute Pfade nutzen.
+- **Dateien ändern (auch kleine `.prf`) mit dem Edit-Tool** — genau wie bei Lua. Kein Python fürs Auslesen oder für kleine Änderungen.
+- **Python nur für seltene Massen-Umbauten** (viele Buttons gleichzeitig, Über-Kreuz-Tausch-Logik). Diese Python-Aufrufe werden **einzeln bestätigt** — kein pauschales `Bash(python3 *)` in der Allowlist.
+- **Nachfragen:** Bei echter Unklarheit **immer** kurz fragen (wichtig!). Sonst: entscheiden → umsetzen → knapp berichten und getroffene Annahmen im Bericht nennen. Nicht wegen jeder Kleinigkeit stoppen.
+- **Commit/Push nur auf ausdrückliche Anweisung.**
