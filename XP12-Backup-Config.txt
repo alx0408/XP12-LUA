@@ -66,9 +66,21 @@ WebFMC-log.txt
 LandingRate.log
 LandingRate.xlsx
 Custom Scenery\scenery_packs.ini
+imgui.ini
 
-# --- Aircraft: aus JEDEM Unterordner nur die Einstellungsdateien -----
-Aircraft | *_prefs.txt
+# --- Lizenzen und Plugin-Einstellungen -------------------------------
+# webfmc-lic-v2.txt ist die Lizenzdatei - ohne sie ist eine
+# Neuaktivierung noetig.
+Output\WebFMC\webfmc-lic-v2.txt
+Resources\plugins\Xchecklist\Xchecklist.prf
+Resources\plugins\AviTab\config.json
+
+# --- Aircraft: aus JEDEM Unterordner die Einstellungsdateien ---------
+# _prefs    = Einstellungen des Flugzeugs
+# _clist    = Checklisten
+# _config   = Cockpit-Konfiguration
+# _vrconfig = VR-Konfiguration
+Aircraft | *_prefs.txt, *_clist.txt, *_config.txt, *_vrconfig.txt
 
 
 # ---------------------------------------------------------------------
