@@ -1,0 +1,110 @@
+# =====================================================================
+#  XP12-Backup - Konfiguration
+# =====================================================================
+#  Zeilen, die mit # beginnen, werden ignoriert (Kommentare).
+#  Leerzeilen sind egal.
+# =====================================================================
+
+
+# ---------------------------------------------------------------------
+#  1) EINSTELLUNGEN
+# ---------------------------------------------------------------------
+#  Es zaehlt immer die Zeile, die zum laufenden System passt -
+#  die jeweils andere wird automatisch ignoriert.
+#
+#  Auf dem PC ist NUR das X-Plane-Hauptverzeichnis einzutragen.
+#  Den OneDrive-Ordner findet das Skript selbst, solange dort AUTO
+#  stehen bleibt - es legt darin "XP12-BACKUP" an.
+#
+#  ACHTUNG: Die XPLANE_ROOT_WINDOWS-Zeile ist noch geraten und muss
+#  auf dem PC einmal geprueft werden.
+
+XPLANE_ROOT_WINDOWS = C:\X-Plane 12
+BACKUP_ROOT_WINDOWS = AUTO
+
+XPLANE_ROOT_MAC = /Users/alex/X-Plane 12
+BACKUP_ROOT_MAC = /Users/alex/Library/CloudStorage/OneDrive-Persönlich/XP12-BACKUP
+
+#  Wie viele Backup-Staende sollen aufgehoben werden?
+#  Aeltere werden nach dem Lauf automatisch geloescht.
+BEHALTEN = 10
+
+
+# ---------------------------------------------------------------------
+#  2) WAS GESICHERT WIRD
+# ---------------------------------------------------------------------
+#  Eine Zeile pro Eintrag. Alle Pfade sind RELATIV zum XPLANE_ROOT,
+#  also ohne "C:\X-Plane 12" davor. Schreibweise mit \ oder / ist egal.
+#  Die Ordnerstruktur bleibt im Backup immer erhalten.
+#
+#  Einzelne Datei:
+#      Log.txt
+#
+#  Kompletter Ordner (inklusive aller Unterordner):
+#      Output\preferences
+#
+#  Ordner, aber nur bestimmte Dateien  ->  Filter hinter | :
+#      Aircraft | *_prefs.txt
+#
+#  Mehrere Filter mit Komma trennen:
+#      Aircraft | *_prefs.txt, *.cfg
+# ---------------------------------------------------------------------
+
+[SICHERN]
+
+# --- Komplette Ordner ------------------------------------------------
+Output\preferences
+Output\logbooks
+Output\FMS plans
+Resources\plugins\FlyWithLua\Scripts
+Resources\plugins\FlyWithLua\Scripts (disabled)
+
+# --- Einzelne Dateien (behalten ihren Pfad im Backup) ----------------
+Log.txt
+FlyWithLua_Debug.txt
+WebFMC-log.txt
+LandingRate.log
+LandingRate.xlsx
+Custom Scenery\scenery_packs.ini
+
+# --- Aircraft: aus JEDEM Unterordner nur die Einstellungsdateien -----
+Aircraft | *_prefs.txt
+
+
+# ---------------------------------------------------------------------
+#  3) WAS GESPIEGELT WIRD
+# ---------------------------------------------------------------------
+#  Fuer grosse Ordner, die sich selten aendern.
+#
+#  Unterschied zu [SICHERN]:
+#    [SICHERN]  legt bei JEDEM Lauf eine vollstaendige neue Kopie an.
+#    [SPIEGELN] haelt EINE Kopie unter _Spiegel aktuell und uebertraegt
+#               nur neue und geaenderte Dateien. Das spart Speicher
+#               und Upload-Volumen.
+#
+#  Es wird dabei nie etwas geloescht. Loeschst du eine Datei in X-Plane,
+#  bleibt sie im Spiegel erhalten und wird beim Lauf nur gemeldet.
+#
+#  Gleiche Schreibweise wie oben (Ordner, Datei, Filter mit | ).
+# ---------------------------------------------------------------------
+
+[SPIEGELN]
+
+# 44 MB in 15 Dateien - jede .sit enthaelt den kompletten Weltzustand
+Output\situations
+
+
+# ---------------------------------------------------------------------
+#  Weitere Kandidaten - bei Bedarf einfach das # am Zeilenanfang
+#  entfernen. Nicht aktiviert, weil sie bisher nicht gesichert wurden:
+# ---------------------------------------------------------------------
+# Resources\plugins\FlyWithLua\Modules
+# Resources\plugins\FlyWithLua\Scripts BACKUP
+# Resources\plugins\FlyWithLua\Scrips (quarantäne)
+# Resources\plugins\FlyWithLua\fwl_prefs.ini
+# Resources\plugins\FlyWithLua\user.ini
+# Resources\plugins\FlyWithLua\initial_assignments.txt
+#
+#  Bewusst NICHT gesichert, weil bei einer Neuinstallation ohnehin
+#  wieder vorhanden: Documentation, lin_x64, mac_x64, win_x64
+#  (zusammen rund 34 MB reine Programmdateien).
