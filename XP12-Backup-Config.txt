@@ -105,6 +105,11 @@ Aircraft | *_prefs.txt, *_clist.txt, *_config.txt, *_vrconfig.txt
 # 44 MB in 15 Dateien - jede .sit enthaelt den kompletten Weltzustand
 Output\situations
 
+# ToLiss A320 - vorerst NICHT aktiv (1,15 GB Upload).
+# Zum Aktivieren das # vor der gewuenschten Zeile entfernen.
+# Resources\plugins\ToLissData
+# Resources\plugins\ToLissFlightPlans
+
 
 # ---------------------------------------------------------------------
 #  Weitere Kandidaten - bei Bedarf einfach das # am Zeilenanfang
